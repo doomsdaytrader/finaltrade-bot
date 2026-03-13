@@ -50,7 +50,7 @@ async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = (
         "🖥️ **The Final Trade Terminal**\n"
         "Click the link below or the Mini App button to access the dashboard:\n"
-        "🌐 https://finaltrade.vercel.app"
+        "🌐 https://finaltrade-dashboard-91me6lozz-irayecrypto-1565s-projects.vercel.app"
     )
     await update.message.reply_text(msg)
 
