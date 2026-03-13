@@ -57,24 +57,32 @@ def auto_post_loop(bot_token: str):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     time.sleep(15)
-    logger.info("Auto-posting engine V3 started!")
+    logger.info("Auto-posting engine V4 started! Continuous drip mode active.")
+
+    pulse_counter = 0
 
     while True:
         try:
             if GROUP_ID:
-                # Cycle through ALL categories
+                # Cycle through ALL categories slowly
                 for category, feeds in NEWS_FEEDS.items():
                     loop.run_until_complete(auto_post_category(bot, category, feeds))
-                    time.sleep(5)
+                    # STEADY DRIP: Short 30-second delay between categories.
+                    # This ensures a continuous real-time flow without massive 10-minute dead zones.
+                    time.sleep(30)
 
-                # Market pulse with Fear & Greed
-                loop.run_until_complete(auto_post_market_pulse(bot))
+                # Market pulse with Fear & Greed every few category cycles
+                pulse_counter += 1
+                if pulse_counter >= 3:
+                    loop.run_until_complete(auto_post_market_pulse(bot))
+                    pulse_counter = 0
 
         except Exception as e:
             logger.error(f"Auto-post cycle error: {e}")
 
-        # 10 minute wait between full cycles
-        time.sleep(600)
+        # Extremely short 15 second wait before restarting the entire cycle.
+        # NO MORE 10-MINUTE DELAYS. Real-time scanning.
+        time.sleep(15)
 
 
 async def auto_post_category(bot: Bot, category: str, feeds: list):
