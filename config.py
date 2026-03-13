@@ -3,8 +3,12 @@ import os
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 GROUP_ID = os.environ.get("GROUP_ID", "")
 
-# WEEX Referral
+# Affiliate / Referral Links
 WEEX_REF = "t4fl"
+BYDFI_REF = "Bz6sDC2e&f=Thefinaltrade"
+BITUNIX_REF = "cujH"
+BTCC_REF = "Z0TOZT&utm_source=kol"
+KCEX_REF = "ZAWFPO"
 
 # Wallets
 TRC20_WALLET = os.environ.get("TRC20_WALLET", "")
