@@ -5,6 +5,7 @@ import time
 import requests
 import feedparser
 import re
+import random
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
@@ -23,12 +24,18 @@ from telegram_commands import (
     extract_thumbnail, extract_summary
 )
 from token_alerts import auto_post_hottest_tokens
+from survival_hacks import auto_post_survival_hack
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+posted_urls = set()
+recent_news_digest = []
+last_digest_time = time.time()
+
 
 
 # ============================================================
@@ -51,16 +58,17 @@ def run_health_server():
 # ============================================================
 # AUTO-POST ENGINE — With thumbnails & rich formatting
 # ============================================================
-posted_urls = set()
 
 def auto_post_loop(bot_token: str):
     bot = Bot(token=bot_token)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     time.sleep(15)
-    logger.info("Auto-posting engine V4 started! Continuous drip mode active.")
+    logger.info("Auto-posting engine V6 started! Continuous drip mode + 2hr digests.")
 
     pulse_counter = 0
+    hack_counter = 0
+    global last_digest_time
 
     while True:
         try:
@@ -72,24 +80,35 @@ def auto_post_loop(bot_token: str):
                     # This ensures a continuous real-time flow without massive 10-minute dead zones.
                     time.sleep(30)
 
-                # Market pulse with Fear & Greed every few category cycles
+                # Market pulse with Fear & Greed & Hottest Tokens
                 pulse_counter += 1
                 if pulse_counter >= 3:
                     loop.run_until_complete(auto_post_market_pulse(bot))
                     loop.run_until_complete(auto_post_hottest_tokens(bot))
                     pulse_counter = 0
 
+                # Survival hack auto-post
+                hack_counter += 1
+                if hack_counter >= 5:
+                    loop.run_until_complete(auto_post_survival_hack(bot))
+                    hack_counter = 0
+
+                # 2-Hour News Digest Rollup
+                current_time = time.time()
+                if current_time - last_digest_time >= 7200:
+                    loop.run_until_complete(auto_post_2hr_digest(bot))
+                    last_digest_time = current_time
+
         except Exception as e:
             logger.error(f"Auto-post cycle error: {e}")
 
         # Extremely short 15 second wait before restarting the entire cycle.
-        # NO MORE 10-MINUTE DELAYS. Real-time scanning.
         time.sleep(15)
 
 
 async def auto_post_category(bot: Bot, category: str, feeds: list):
     """Auto-post RSS articles with thumbnails to the group."""
-    global posted_urls
+    global posted_urls, recent_news_digest
     config = CATEGORY_CONFIG.get(category, {"emoji": "📰", "label": category.upper(), "color": "⚪", "hashtag": ""})
 
     # Route to correct topic
@@ -112,6 +131,19 @@ async def auto_post_category(bot: Bot, category: str, feeds: list):
                     thumb = extract_thumbnail(entry)
                     summary = extract_summary(entry, 200)
 
+                    # Track for 2-hour digest roll-up
+                    recent_news_digest.append(f"{config['emoji']} <a href='{entry.link}'>{entry.title}</a>")
+                    if len(recent_news_digest) > 40:
+                        recent_news_digest.pop(0)
+
+                    # Detect commodities for affiliate link injection
+                    text_to_check = (entry.title + " " + summary).lower()
+                    commodity_link = ""
+                    commodities = ['gold', 'silver', 'oil', 'platinum', 'palladium', 'precious metal', 'rare earth']
+                    if any(kw in text_to_check for kw in commodities):
+                        from config import BYDFI_REF
+                        commodity_link = f"\n\n⛏️ <b>Trade Commodities on BYDFi:</b> <a href='https://partner.bydfi.com/register?vipCode={BYDFI_REF}&f=Thefinaltrade'>Click Here</a>"
+
                     caption = (
                         f"{config['emoji']} <b>{config['label']} ALERT</b>\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -120,7 +152,7 @@ async def auto_post_category(bot: Bot, category: str, feeds: list):
                     if summary:
                         caption += f"{summary}\n\n"
                     caption += (
-                        f"🔗 <a href='{entry.link}'>Read Full Report</a>\n\n"
+                        f"🔗 <a href='{entry.link}'>Read Full Report</a>{commodity_link}\n\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                         f"✝️ <i>The Final Trade</i> {config['hashtag']}"
                     )
@@ -157,8 +189,49 @@ async def auto_post_category(bot: Bot, category: str, feeds: list):
         except Exception as e:
             logger.error(f"Auto-post {category} error ({rss_url}): {e}")
 
-    if len(posted_urls) > 300:
-        posted_urls = set(list(posted_urls)[-150:])
+    # Keep a deep cache so we don't repost links
+    if len(posted_urls) > 1000:
+        posted_urls = set(list(posted_urls)[-500:])
+
+async def auto_post_2hr_digest(bot: Bot):
+    """Posts a 2-hour roll-up digest of alerts and events to prevent spam"""
+    global recent_news_digest
+    if not recent_news_digest:
+        return
+
+    try:
+        lines = [
+            "🌐 <b>THE FINAL TRADE — 2-HOUR GLOBAL DIGEST</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        ]
+
+        # Pick up to 10 top headlines randomly to show recent events
+        display_news = random.sample(recent_news_digest, min(len(recent_news_digest), 10))
+
+        for item in display_news:
+            lines.append(item)
+            lines.append("")
+
+        lines.extend([
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "✝️ <i>The Final Trade — All glory to God.</i>"
+        ])
+        
+        topic_id = int(TOPIC_NEWS) if TOPIC_NEWS and TOPIC_NEWS != "0" else None
+        
+        await bot.send_message(
+            chat_id=int(GROUP_ID), 
+            text="\n".join(lines), 
+            parse_mode=ParseMode.HTML, 
+            disable_web_page_preview=True,
+            message_thread_id=topic_id
+        )
+        
+        # Clear the digest so the next 2 hours has fresh events
+        recent_news_digest.clear()
+        
+    except Exception as e:
+        logger.error(f"2Hr Digest error: {e}")
 
 
 async def auto_post_market_pulse(bot: Bot):
