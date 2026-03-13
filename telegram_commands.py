@@ -1,328 +1,476 @@
 import requests
-from telegram import Update
+import feedparser
+from statistics import mean
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
+from config import (
+    WEEX_REF, TRC20_WALLET, BTC_WALLET, ETH_WALLET,
+    COINGECKO_MARKETS, COINGECKO_COIN, FEAR_GREED_API,
+    NEWS_FEEDS, CATEGORY_CONFIG
+)
 
-# Coin mapping: display_name -> (coingecko_id, symbol, emoji, color_emoji)
-COIN_MAP = {
-    "bitcoin":      ("bitcoin",      "BTC",  "🟠", "₿"),
-    "ethereum":     ("ethereum",     "ETH",  "🔷", "Ξ"),
-    "solana":       ("solana",       "SOL",  "🟣", "◎"),
-    "binancecoin":  ("binancecoin",  "BNB",  "🟡", "⬡"),
-    "lunc":         ("terra-luna",   "LUNC", "🔵", "🌙"),
-    "ustc":         ("terrausd",     "USTC", "🟢", "💲"),
-    "xrp":          ("ripple",       "XRP",  "⚪", "✕"),
-    "cardano":      ("cardano",      "ADA",  "🔵", "♦"),
-    "dogecoin":     ("dogecoin",     "DOGE", "🟤", "Ð"),
-}
-
-# CoinGecko logo URLs (large)
-COIN_LOGOS = {
-    "bitcoin": "https://assets.coingecko.com/coins/images/1/large/bitcoin.png",
-    "ethereum": "https://assets.coingecko.com/coins/images/279/large/ethereum.png",
-    "solana": "https://assets.coingecko.com/coins/images/4128/large/solana.png",
-    "binancecoin": "https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png",
-    "lunc": "https://assets.coingecko.com/coins/images/8284/large/01_LussEJ.png",
-    "ustc": "https://assets.coingecko.com/coins/images/12681/large/UST.png",
-    "xrp": "https://assets.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png",
-    "cardano": "https://assets.coingecko.com/coins/images/975/large/cardano.png",
-    "dogecoin": "https://assets.coingecko.com/coins/images/5/large/dogecoin.png",
-}
-
-def _resolve_coin(user_input: str):
-    """Resolve user input to a coin entry. Handles aliases like 'btc', 'lunc', etc."""
-    user_input = user_input.lower().strip()
-    # Direct match
-    if user_input in COIN_MAP:
-        return user_input, COIN_MAP[user_input]
-    # Symbol match
-    for key, (cg_id, symbol, emoji, color) in COIN_MAP.items():
-        if user_input == symbol.lower() or user_input == cg_id.lower():
-            return key, COIN_MAP[key]
-    # Fallback: treat as CoinGecko ID directly
-    return user_input, (user_input, user_input.upper(), "📊", "•")
+# ============================================================
+# RSI ESTIMATION (from sparkline data)
+# ============================================================
+def estimate_rsi(prices):
+    """Estimate RSI from a list of price points."""
+    gains, losses = [], []
+    for i in range(1, len(prices)):
+        delta = prices[i] - prices[i - 1]
+        if delta >= 0:
+            gains.append(delta)
+        else:
+            losses.append(abs(delta))
+    avg_gain = mean(gains) if gains else 0.001
+    avg_loss = mean(losses) if losses else 0.001
+    rs = avg_gain / avg_loss
+    return round(100 - (100 / (1 + rs)), 2)
 
 
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = (
-        "✝️ <b>Welcome to The Final Trade</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "🙏 <i>All glory goes to God for this community.</i>\n\n"
-        "I am your <b>automated intelligence hub</b>.\n"
-        "I provide live data for:\n\n"
-        "🟠 <b>Crypto & Finance</b>\n"
-        "🌍 <b>Survival & Geopolitics</b>\n"
-        "🐋 <b>Whale Tracking</b>\n"
-        "🔥 <b>LUNC / USTC Intel</b>\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "📋 <b>Commands:</b>\n\n"
-        "/price &lt;coin&gt; — Live crypto price\n"
-        "/markets — Top market overview\n"
-        "/lunc — LUNC (Luna Classic) intel\n"
-        "/ustc — USTC (Terra Classic) intel\n"
-        "/news — Latest crypto headlines\n"
-        "/survival — Geopolitics & Survival\n"
-        "/dashboard — Open the Mini App Terminal\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "⚡ <b>The Final Trade</b> — powered by faith & data."
+# ============================================================
+# AI SIGNAL GENERATOR
+# ============================================================
+def generate_ai_signal(data):
+    """Generate an AI-style trading signal from CoinGecko coin data."""
+    price = data['market_data']['current_price']['usd']
+    change = data['market_data'].get('price_change_percentage_24h', 0) or 0
+    sparkline = data['market_data'].get('sparkline_7d', {}).get('price', [])
+
+    if len(sparkline) >= 14:
+        rsi = estimate_rsi(sparkline[-24:])
+    else:
+        rsi = 50.0
+
+    # RSI interpretation
+    if rsi > 70:
+        mood = "🔴 OVERBOUGHT — Watch for pullbacks"
+        action = "⚠️ Consider taking profits or tightening stops"
+    elif rsi < 30:
+        mood = "🟢 OVERSOLD — Whale accumulation zone"
+        action = "💎 Strong buy signal for patient holders"
+    elif rsi > 55:
+        mood = "🟡 SLIGHTLY BULLISH — Momentum building"
+        action = "📈 Trail stops and ride the wave"
+    else:
+        mood = "⚪ NEUTRAL — Consolidation phase"
+        action = "⏳ Wait for confirmation before entry"
+
+    trend = "✅ Bullish continuation expected" if change > 0 else "⚠️ Bearish pressure detected"
+
+    signal = (
+        f"🧠 <b>AI SIGNAL ANALYSIS</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📊 RSI: <b>{rsi}</b> — {mood}\n"
+        f"📉 Trend: {trend}\n"
+        f"🎯 Action: {action}\n"
+        f"⚡ Leverage Zone: 10x-20x for short bursts"
     )
-    await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+    return signal, rsi
 
 
+# ============================================================
+# FETCH DETAILED COIN DATA
+# ============================================================
+def fetch_coin_detail(coin_id: str):
+    """Fetch full coin data from CoinGecko with sparkline."""
+    url = COINGECKO_COIN.format(coin_id)
+    params = "?localization=false&tickers=false&community_data=false&developer_data=false&sparkline=true"
+    r = requests.get(url + params, timeout=15)
+    return r.json()
+
+
+# ============================================================
+# /START COMMAND — Interactive Menu
+# ============================================================
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🔵 LUNC Signal", callback_data="signal_terra-luna"),
+            InlineKeyboardButton("🟢 USTC Signal", callback_data="signal_terrausd"),
+        ],
+        [
+            InlineKeyboardButton("🟠 BTC Forecast", callback_data="signal_bitcoin"),
+            InlineKeyboardButton("🔷 ETH Forecast", callback_data="signal_ethereum"),
+        ],
+        [
+            InlineKeyboardButton("📊 Market Overview", callback_data="cmd_markets"),
+            InlineKeyboardButton("😱 Fear & Greed", callback_data="cmd_feargreed"),
+        ],
+        [
+            InlineKeyboardButton("📰 Crypto News", callback_data="cmd_news"),
+            InlineKeyboardButton("🌍 World News", callback_data="cmd_survival"),
+        ],
+        [
+            InlineKeyboardButton("🔬 NASA & Space", callback_data="cmd_science"),
+            InlineKeyboardButton("🔍 Token Scanner", callback_data="cmd_scanner"),
+        ],
+        [
+            InlineKeyboardButton("🖥️ Open Terminal", callback_data="cmd_dashboard"),
+            InlineKeyboardButton("⚠️ Disclaimer", callback_data="cmd_disclaimer"),
+        ],
+    ])
+
+    msg = (
+        "✝️ <b>WELCOME TO THE FINAL TRADE</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🙏 <i>All glory goes to God.</i>\n\n"
+        "🧠 <b>Your AI-Powered Intelligence Hub:</b>\n\n"
+        "🔹 LUNC & USTC Deep Metrics + RSI\n"
+        "🔹 Auto Signals 24/7 with AI Analysis\n"
+        "🔹 World / NASA / NOAA / Geopolitics\n"
+        "🔹 RSI, Sparkline, Volume, Whale Zones\n"
+        "🔹 WEEX Leverage 10x-30x Alerts\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "⚡ Tap any button below to begin."
+    )
+    await update.message.reply_text(msg, parse_mode=ParseMode.HTML, reply_markup=keyboard)
+
+
+# ============================================================
+# CALLBACK HANDLER — Button Presses
+# ============================================================
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    if data.startswith("signal_"):
+        coin_id = data.replace("signal_", "")
+        await _send_full_signal(query.message.chat.id, coin_id, context)
+    elif data == "cmd_markets":
+        await _send_markets(query.message.chat.id, context)
+    elif data == "cmd_feargreed":
+        await _send_fear_greed(query.message.chat.id, context)
+    elif data == "cmd_news":
+        await _send_rss_news(query.message.chat.id, "crypto", context)
+    elif data == "cmd_survival":
+        await _send_rss_news(query.message.chat.id, "world", context)
+    elif data == "cmd_science":
+        await _send_rss_news(query.message.chat.id, "science", context)
+    elif data == "cmd_scanner":
+        await context.bot.send_message(
+            query.message.chat.id,
+            "🔍 <b>Token Scanner</b>\n\nUse /token followed by any coin:\n<code>/token sol</code>\n<code>/token doge</code>\n<code>/token xrp</code>",
+            parse_mode=ParseMode.HTML
+        )
+    elif data == "cmd_dashboard":
+        await _send_dashboard(query.message.chat.id, context)
+    elif data == "cmd_disclaimer":
+        await context.bot.send_message(
+            query.message.chat.id,
+            "⚠️ <b>Disclaimer</b>\n\nThis bot is for educational and informational purposes only. "
+            "Not financial advice. Always do your own research. Trade at your own risk.\n\n"
+            "✝️ <i>All glory to God.</i>",
+            parse_mode=ParseMode.HTML
+        )
+
+
+# ============================================================
+# FULL SIGNAL — Coin logo + RSI + AI + WEEX link
+# ============================================================
+async def _send_full_signal(chat_id, coin_id, context):
+    try:
+        data = fetch_coin_detail(coin_id)
+        name = data.get('name', coin_id.upper())
+        symbol = data.get('symbol', '').upper()
+        price = data['market_data']['current_price']['usd']
+        change_24h = data['market_data'].get('price_change_percentage_24h', 0) or 0
+        change_7d = data['market_data'].get('price_change_percentage_7d', 0) or 0
+        market_cap = data['market_data'].get('market_cap', {}).get('usd', 0) or 0
+        volume = data['market_data'].get('total_volume', {}).get('usd', 0) or 0
+        image_url = data.get('image', {}).get('large', '')
+
+        ai_signal, rsi = generate_ai_signal(data)
+
+        # Price formatting
+        p_str = f"${price:,.2f}" if price >= 1 else f"${price:,.6f}"
+        mc_str = f"${market_cap/1e9:,.2f}B" if market_cap >= 1e9 else f"${market_cap/1e6:,.1f}M"
+        vol_str = f"${volume/1e9:,.2f}B" if volume >= 1e9 else f"${volume/1e6:,.1f}M"
+        arrow_24h = "🟢▲" if change_24h > 0 else "🔴▼"
+        arrow_7d = "🟢▲" if change_7d > 0 else "🔴▼"
+
+        weex_link = f"https://www.weex.com/en/spot/{symbol}_USDT?vipCode={WEEX_REF}"
+
+        caption = (
+            f"🚨 <b>{name} ({symbol}) — SIGNAL</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"💰 <b>Price:</b> {p_str}\n"
+            f"{arrow_24h} <b>24h:</b> {change_24h:+.2f}%\n"
+            f"{arrow_7d} <b>7d:</b> {change_7d:+.2f}%\n"
+            f"📊 <b>Market Cap:</b> {mc_str}\n"
+            f"📈 <b>Volume:</b> {vol_str}\n\n"
+            f"{ai_signal}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"✝️ <i>The Final Trade — All glory to God</i>"
+        )
+
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton(f"📈 Trade {symbol} on WEEX", url=weex_link)],
+            [InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_back")],
+        ])
+
+        if image_url:
+            await context.bot.send_photo(
+                chat_id=chat_id, photo=image_url,
+                caption=caption, parse_mode=ParseMode.HTML,
+                reply_markup=keyboard
+            )
+        else:
+            await context.bot.send_message(
+                chat_id=chat_id, text=caption,
+                parse_mode=ParseMode.HTML, reply_markup=keyboard
+            )
+    except Exception as e:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"❌ Error fetching signal for <b>{coin_id}</b>.\n<i>{str(e)[:150]}</i>",
+            parse_mode=ParseMode.HTML
+        )
+
+
+# ============================================================
+# /PRICE COMMAND
+# ============================================================
 async def price_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         msg = (
             "📊 <b>Usage:</b> <code>/price bitcoin</code>\n\n"
             "🟠 BTC  🔷 ETH  🟣 SOL  🟡 BNB\n"
-            "🔵 LUNC  🟢 USTC  ⚪ XRP  🟤 DOGE"
+            "🔵 LUNC  🟢 USTC  ⚪ XRP  🟤 DOGE\n\n"
+            "<i>Or use /token for full AI signal analysis</i>"
         )
         await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
         return
 
-    user_input = context.args[0]
-    key, (cg_id, symbol, emoji, color_emoji) = _resolve_coin(user_input)
+    coin_id = context.args[0].lower()
+    # Handle aliases
+    aliases = {"btc": "bitcoin", "eth": "ethereum", "sol": "solana", "bnb": "binancecoin",
+               "lunc": "terra-luna", "ustc": "terrausd", "xrp": "ripple", "doge": "dogecoin",
+               "ada": "cardano", "dot": "polkadot", "avax": "avalanche-2"}
+    coin_id = aliases.get(coin_id, coin_id)
 
-    try:
-        url = f"https://api.coingecko.com/api/v3/coins/{cg_id}?localization=false&tickers=false&community_data=false&developer_data=false"
-        data = requests.get(url, timeout=10).json()
+    await _send_full_signal(update.message.chat.id, coin_id, context)
 
-        price = data["market_data"]["current_price"]["usd"]
-        change_24h = data["market_data"]["price_change_percentage_24h"] or 0
-        market_cap = data["market_data"]["market_cap"]["usd"] or 0
-        volume = data["market_data"]["total_volume"]["usd"] or 0
-        name = data.get("name", symbol)
-        image_url = data.get("image", {}).get("large", "")
 
-        # Format numbers
-        if price >= 1:
-            price_str = f"${price:,.2f}"
-        else:
-            price_str = f"${price:,.6f}"
-
-        mc_str = f"${market_cap/1e9:,.2f}B" if market_cap >= 1e9 else f"${market_cap/1e6:,.1f}M"
-        vol_str = f"${volume/1e9:,.2f}B" if volume >= 1e9 else f"${volume/1e6:,.1f}M"
-
-        # Direction arrow
-        if change_24h > 0:
-            arrow = "🟢 ▲"
-            trend = "BULLISH"
-        elif change_24h < 0:
-            arrow = "🔴 ▼"
-            trend = "BEARISH"
-        else:
-            arrow = "⚪ ▬"
-            trend = "NEUTRAL"
-
-        caption = (
-            f"{emoji} <b>{name} ({symbol})</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"💰 <b>Price:</b> {price_str}\n"
-            f"{arrow} <b>24h:</b> {change_24h:+.2f}%  —  {trend}\n"
-            f"📊 <b>Market Cap:</b> {mc_str}\n"
-            f"📈 <b>Volume:</b> {vol_str}\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"⚡ <i>The Final Trade — All glory to God</i>"
+# ============================================================
+# /TOKEN COMMAND — Scan any coin
+# ============================================================
+async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text(
+            "🔍 <b>Token Scanner</b>\n\nUsage: <code>/token sol</code>",
+            parse_mode=ParseMode.HTML
         )
-
-        if image_url:
-            await update.message.reply_photo(photo=image_url, caption=caption, parse_mode=ParseMode.HTML)
-        else:
-            await update.message.reply_text(caption, parse_mode=ParseMode.HTML)
-
-    except Exception as e:
-        await update.message.reply_text(f"❌ Error fetching <b>{user_input}</b>. Check spelling or try again.\n\n<i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
+        return
+    coin_id = context.args[0].lower()
+    aliases = {"btc": "bitcoin", "eth": "ethereum", "sol": "solana", "bnb": "binancecoin",
+               "lunc": "terra-luna", "ustc": "terrausd", "xrp": "ripple", "doge": "dogecoin"}
+    coin_id = aliases.get(coin_id, coin_id)
+    await _send_full_signal(update.message.chat.id, coin_id, context)
 
 
+# ============================================================
+# /MARKETS COMMAND
+# ============================================================
 async def markets_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Show top market overview with all tracked coins."""
-    coins_to_fetch = ["bitcoin", "ethereum", "solana", "binancecoin", "terra-luna", "terrausd", "ripple", "dogecoin"]
-    coin_ids = ",".join(coins_to_fetch)
+    await _send_markets(update.message.chat.id, context)
 
+async def _send_markets(chat_id, context):
+    coins = "bitcoin,ethereum,solana,binancecoin,terra-luna,terrausd,ripple,dogecoin"
     try:
-        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_ids}&vs_currencies=usd&include_24hr_change=true"
+        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coins}&vs_currencies=usd&include_24hr_change=true"
         data = requests.get(url, timeout=10).json()
 
-        lines = ["🌐 <b>MARKET OVERVIEW</b>", "━━━━━━━━━━━━━━━━━━━━━━━", ""]
-
-        display_order = [
-            ("bitcoin", "BTC", "🟠"),
-            ("ethereum", "ETH", "🔷"),
-            ("solana", "SOL", "🟣"),
-            ("binancecoin", "BNB", "🟡"),
-            ("terra-luna", "LUNC", "🔵"),
-            ("terrausd", "USTC", "🟢"),
-            ("ripple", "XRP", "⚪"),
-            ("dogecoin", "DOGE", "🟤"),
+        display = [
+            ("bitcoin", "BTC", "🟠"), ("ethereum", "ETH", "🔷"),
+            ("solana", "SOL", "🟣"), ("binancecoin", "BNB", "🟡"),
+            ("terra-luna", "LUNC", "🔵"), ("terrausd", "USTC", "🟢"),
+            ("ripple", "XRP", "⚪"), ("dogecoin", "DOGE", "🟤"),
         ]
 
-        for cg_id, symbol, emoji in display_order:
+        # Fear & Greed
+        fg_text = ""
+        try:
+            fg = requests.get(FEAR_GREED_API, timeout=5).json()['data'][0]
+            fg_val = fg['value']
+            fg_class = fg['value_classification']
+            fg_emoji = "😱" if int(fg_val) < 25 else "😰" if int(fg_val) < 50 else "😐" if int(fg_val) < 75 else "🤑"
+            fg_text = f"\n{fg_emoji} <b>Fear & Greed Index:</b> {fg_val} — {fg_class}\n"
+        except:
+            pass
+
+        lines = ["🌐 <b>MARKET OVERVIEW — THE FINAL TRADE</b>", "━━━━━━━━━━━━━━━━━━━━━━━", fg_text]
+
+        for cg_id, symbol, emoji in display:
             if cg_id in data:
                 price = data[cg_id]["usd"]
                 change = data[cg_id].get("usd_24h_change", 0) or 0
                 arrow = "🟢▲" if change > 0 else "🔴▼" if change < 0 else "⚪▬"
-
-                if price >= 1:
-                    p_str = f"${price:,.2f}"
-                else:
-                    p_str = f"${price:,.6f}"
-
+                p_str = f"${price:,.2f}" if price >= 1 else f"${price:,.6f}"
                 lines.append(f"{emoji} <b>{symbol}</b>  {p_str}  {arrow} {change:+.1f}%")
 
-        lines.append("")
-        lines.append("━━━━━━━━━━━━━━━━━━━━━━━")
-        lines.append("⚡ <i>The Final Trade — All glory to God</i>")
-
-        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
-
+        lines.extend(["", "━━━━━━━━━━━━━━━━━━━━━━━", "✝️ <i>The Final Trade — All glory to God</i>"])
+        await context.bot.send_message(chat_id, "\n".join(lines), parse_mode=ParseMode.HTML)
     except Exception as e:
-        await update.message.reply_text(f"❌ Error loading markets.\n<i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
+        await context.bot.send_message(chat_id, f"❌ Error loading markets.\n<i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
 
 
-async def news_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    import feedparser
+# ============================================================
+# FEAR & GREED
+# ============================================================
+async def _send_fear_greed(chat_id, context):
     try:
-        feed = feedparser.parse("https://cointelegraph.com/rss")
-        entries = feed.entries[:5]
+        fg = requests.get(FEAR_GREED_API, timeout=10).json()['data'][0]
+        val = int(fg['value'])
+        classification = fg['value_classification']
 
-        lines = ["📰 <b>CRYPTO NEWS — LIVE FEED</b>", "━━━━━━━━━━━━━━━━━━━━━━━", ""]
+        if val < 25:
+            bar = "🔴🔴🔴🔴🔴⚪⚪⚪⚪⚪"
+            emoji = "😱"
+            insight = "Extreme fear — historically a strong buying opportunity"
+        elif val < 50:
+            bar = "🟠🟠🟠🟠🟠⚪⚪⚪⚪⚪"
+            emoji = "😰"
+            insight = "Fear in the market — smart money is watching closely"
+        elif val < 75:
+            bar = "🟡🟡🟡🟡🟡🟡🟡⚪⚪⚪"
+            emoji = "😐"
+            insight = "Neutral to greedy — market is building confidence"
+        else:
+            bar = "🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢"
+            emoji = "🤑"
+            insight = "Extreme greed — caution! Tops often form here"
 
-        for i, entry in enumerate(entries):
-            lines.append(f"🔹 <a href='{entry.link}'>{entry.title}</a>")
-            lines.append("")
-
-        lines.append("━━━━━━━━━━━━━━━━━━━━━━━")
-        lines.append("⚡ <i>The Final Trade — All glory to God</i>")
-
-        await update.message.reply_text(
-            "\n".join(lines),
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True
+        msg = (
+            f"{emoji} <b>FEAR & GREED INDEX</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📊 <b>Score:</b> {val}/100\n"
+            f"📈 <b>Status:</b> {classification}\n"
+            f"{bar}\n\n"
+            f"💡 <b>Insight:</b> {insight}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"✝️ <i>The Final Trade — All glory to God</i>"
         )
+        await context.bot.send_message(chat_id, msg, parse_mode=ParseMode.HTML)
     except Exception as e:
-        await update.message.reply_text(f"❌ Error loading news.\n<i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
+        await context.bot.send_message(chat_id, f"❌ Error fetching Fear & Greed.\n<i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
 
+
+# ============================================================
+# /NEWS, /SURVIVAL, /SCIENCE COMMANDS — RSS Feeds
+# ============================================================
+async def news_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _send_rss_news(update.message.chat.id, "crypto", context)
 
 async def survival_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    import feedparser
+    await _send_rss_news(update.message.chat.id, "world", context)
+
+async def science_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _send_rss_news(update.message.chat.id, "science", context)
+
+async def _send_rss_news(chat_id, category, context):
     try:
-        feeds = [
-            ("Reuters World", "https://www.reuters.com/world/rss"),
-            ("AP News", "https://apnews.com/hub/ap-top-news?output=rss"),
-        ]
+        config = CATEGORY_CONFIG.get(category, {"emoji": "📰", "label": category.upper(), "color": "⚪"})
+        feeds = NEWS_FEEDS.get(category, [])
+        entries = []
 
-        lines = ["🌍 <b>SURVIVAL & GEOPOLITICS — LIVE INTEL</b>", "━━━━━━━━━━━━━━━━━━━━━━━", ""]
-
-        for source_name, rss_url in feeds:
+        for rss_url in feeds:
             try:
                 feed = feedparser.parse(rss_url)
                 for entry in feed.entries[:3]:
-                    lines.append(f"🔸 <a href='{entry.link}'>{entry.title}</a>")
-                    lines.append(f"   <i>— {source_name}</i>")
-                    lines.append("")
+                    entries.append(entry)
             except:
                 pass
 
-        lines.append("━━━━━━━━━━━━━━━━━━━━━━━")
-        lines.append("⚡ <i>The Final Trade — All glory to God</i>")
+        if not entries:
+            await context.bot.send_message(chat_id, f"❌ No {category} news available right now.", parse_mode=ParseMode.HTML)
+            return
 
-        await update.message.reply_text(
-            "\n".join(lines),
+        lines = [
+            f"{config['emoji']} <b>{config['label']} — LIVE FEED</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━", ""
+        ]
+
+        for entry in entries[:8]:
+            lines.append(f"{config['color']} <a href='{entry.link}'>{entry.title}</a>")
+            lines.append("")
+
+        lines.extend(["━━━━━━━━━━━━━━━━━━━━━━━", "✝️ <i>The Final Trade — All glory to God</i>"])
+
+        await context.bot.send_message(
+            chat_id, "\n".join(lines),
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
         )
     except Exception as e:
-        await update.message.reply_text(f"❌ Error loading survival intel.\n<i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
+        await context.bot.send_message(chat_id, f"❌ Error loading {category} news.\n<i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
 
 
+# ============================================================
+# /LUNC & /USTC DEDICATED COMMANDS
+# ============================================================
+async def lunc_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _send_full_signal(update.message.chat.id, "terra-luna", context)
+
+async def ustc_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _send_full_signal(update.message.chat.id, "terrausd", context)
+
+
+# ============================================================
+# /DASHBOARD COMMAND
+# ============================================================
 async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _send_dashboard(update.message.chat.id, context)
+
+async def _send_dashboard(chat_id, context):
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🖥️ Open Terminal", url="https://finaltrade-dashboard-91me6lozz-irayecrypto-1565s-projects.vercel.app")],
+    ])
     msg = (
         "🖥️ <b>THE FINAL TRADE TERMINAL</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "Access the full cyberpunk dashboard:\n\n"
-        "🌐 <a href='https://finaltrade-dashboard-91me6lozz-irayecrypto-1565s-projects.vercel.app'>OPEN TERMINAL</a>\n\n"
+        "Access the full cyberpunk dashboard with:\n"
+        "📊 Live Charts  📈 Market Data  📰 News Feeds\n\n"
         "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "⚡ <i>The Final Trade — All glory to God</i>"
+        "✝️ <i>The Final Trade — All glory to God</i>"
     )
-    await update.message.reply_text(msg, parse_mode=ParseMode.HTML, disable_web_page_preview=False)
+    await context.bot.send_message(chat_id, msg, parse_mode=ParseMode.HTML, reply_markup=keyboard)
 
 
-async def lunc_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Dedicated LUNC (Luna Classic) command with detailed intel."""
+# ============================================================
+# /FORECAST — BTC & ETH + Fear & Greed
+# ============================================================
+async def forecast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        url = "https://api.coingecko.com/api/v3/coins/terra-luna?localization=false&tickers=false&community_data=false&developer_data=false"
+        coins = "bitcoin,ethereum"
+        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coins}&vs_currencies=usd&include_24hr_change=true"
         data = requests.get(url, timeout=10).json()
 
-        price = data["market_data"]["current_price"]["usd"]
-        change_24h = data["market_data"]["price_change_percentage_24h"] or 0
-        change_7d = data["market_data"]["price_change_percentage_7d"] or 0
-        market_cap = data["market_data"]["market_cap"]["usd"] or 0
-        volume = data["market_data"]["total_volume"]["usd"] or 0
-        circulating = data["market_data"]["circulating_supply"] or 0
-        image_url = data.get("image", {}).get("large", "")
+        btc_price = data.get("bitcoin", {}).get("usd", 0)
+        btc_change = data.get("bitcoin", {}).get("usd_24h_change", 0) or 0
+        eth_price = data.get("ethereum", {}).get("usd", 0)
+        eth_change = data.get("ethereum", {}).get("usd_24h_change", 0) or 0
 
-        arrow_24h = "🟢▲" if change_24h > 0 else "🔴▼"
-        arrow_7d = "🟢▲" if change_7d > 0 else "🔴▼"
+        fg_text = ""
+        try:
+            fg = requests.get(FEAR_GREED_API, timeout=5).json()['data'][0]
+            fg_text = f"😱 Fear & Greed: <b>{fg['value']}</b> ({fg['value_classification']})"
+        except:
+            fg_text = "Fear & Greed: unavailable"
 
-        caption = (
-            f"🔵🌙 <b>LUNC — LUNA CLASSIC</b>\n"
+        btc_arrow = "🟢▲" if btc_change > 0 else "🔴▼"
+        eth_arrow = "🟢▲" if eth_change > 0 else "🔴▼"
+
+        msg = (
+            f"📉 <b>BTC & ETH FORECAST</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"💰 <b>Price:</b> ${price:,.6f}\n"
-            f"{arrow_24h} <b>24h Change:</b> {change_24h:+.2f}%\n"
-            f"{arrow_7d} <b>7d Change:</b> {change_7d:+.2f}%\n"
-            f"📊 <b>Market Cap:</b> ${market_cap/1e6:,.1f}M\n"
-            f"📈 <b>24h Volume:</b> ${volume/1e6:,.1f}M\n"
-            f"🔄 <b>Circulating:</b> {circulating/1e9:,.1f}B LUNC\n\n"
+            f"🟠 <b>BTC:</b> ${btc_price:,.2f}  {btc_arrow} {btc_change:+.1f}%\n"
+            f"🔷 <b>ETH:</b> ${eth_price:,.2f}  {eth_arrow} {eth_change:+.1f}%\n\n"
+            f"{fg_text}\n\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"🔥 <b>BURN THE SUPPLY. REBUILD THE ECOSYSTEM.</b>\n"
-            f"⚡ <i>The Final Trade — All glory to God</i>"
+            f"✝️ <i>The Final Trade — All glory to God</i>"
         )
-
-        if image_url:
-            await update.message.reply_photo(photo=image_url, caption=caption, parse_mode=ParseMode.HTML)
-        else:
-            await update.message.reply_text(caption, parse_mode=ParseMode.HTML)
-
+        await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
     except Exception as e:
-        await update.message.reply_text(f"❌ Error fetching LUNC data.\n<i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
-
-
-async def ustc_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Dedicated USTC (TerraClassicUSD) command with detailed intel."""
-    try:
-        url = "https://api.coingecko.com/api/v3/coins/terrausd?localization=false&tickers=false&community_data=false&developer_data=false"
-        data = requests.get(url, timeout=10).json()
-
-        price = data["market_data"]["current_price"]["usd"]
-        change_24h = data["market_data"]["price_change_percentage_24h"] or 0
-        change_7d = data["market_data"]["price_change_percentage_7d"] or 0
-        market_cap = data["market_data"]["market_cap"]["usd"] or 0
-        volume = data["market_data"]["total_volume"]["usd"] or 0
-        image_url = data.get("image", {}).get("large", "")
-
-        arrow_24h = "🟢▲" if change_24h > 0 else "🔴▼"
-        arrow_7d = "🟢▲" if change_7d > 0 else "🔴▼"
-
-        # Calculate repeg distance
-        repeg_distance = abs(1.0 - price) / 1.0 * 100
-
-        caption = (
-            f"🟢💲 <b>USTC — TERRA CLASSIC USD</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"💰 <b>Price:</b> ${price:,.6f}\n"
-            f"{arrow_24h} <b>24h Change:</b> {change_24h:+.2f}%\n"
-            f"{arrow_7d} <b>7d Change:</b> {change_7d:+.2f}%\n"
-            f"📊 <b>Market Cap:</b> ${market_cap/1e6:,.1f}M\n"
-            f"📈 <b>24h Volume:</b> ${volume/1e6:,.1f}M\n"
-            f"🎯 <b>Re-peg Distance:</b> {repeg_distance:.2f}%\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"🎯 <b>TARGET: $1.00 RE-PEG</b>\n"
-            f"⚡ <i>The Final Trade — All glory to God</i>"
-        )
-
-        if image_url:
-            await update.message.reply_photo(photo=image_url, caption=caption, parse_mode=ParseMode.HTML)
-        else:
-            await update.message.reply_text(caption, parse_mode=ParseMode.HTML)
-
-    except Exception as e:
-        await update.message.reply_text(f"❌ Error fetching USTC data.\n<i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
+        await update.message.reply_text(f"❌ Error loading forecast.\n<i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
