@@ -22,6 +22,7 @@ from telegram_commands import (
     markets_command, forecast_command, button_callback,
     extract_thumbnail, extract_summary
 )
+from token_alerts import auto_post_hottest_tokens
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -75,6 +76,7 @@ def auto_post_loop(bot_token: str):
                 pulse_counter += 1
                 if pulse_counter >= 3:
                     loop.run_until_complete(auto_post_market_pulse(bot))
+                    loop.run_until_complete(auto_post_hottest_tokens(bot))
                     pulse_counter = 0
 
         except Exception as e:
