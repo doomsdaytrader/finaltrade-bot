@@ -6,9 +6,20 @@ import requests
 import feedparser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Bot
-from telegram.ext import ApplicationBuilder, CommandHandler
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 from telegram.constants import ParseMode
-from config import BOT_TOKEN, GROUP_ID, TOPIC_NEWS, TOPIC_SURVIVAL, TOPIC_SIGNALS
+from config import (
+    BOT_TOKEN, GROUP_ID, WEEX_REF,
+    TOPIC_NEWS, TOPIC_SURVIVAL, TOPIC_SIGNALS,
+    NEWS_FEEDS, CATEGORY_CONFIG, COINGECKO_COIN, FEAR_GREED_API
+)
+from telegram_commands import (
+    start_command, price_command, token_command,
+    news_command, survival_command, science_command,
+    dashboard_command, lunc_command, ustc_command,
+    markets_command, forecast_command, button_callback,
+    estimate_rsi, generate_ai_signal, fetch_coin_detail
+)
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -16,14 +27,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from telegram_commands import (
-    start_command, price_command, news_command,
-    survival_command, dashboard_command,
-    lunc_command, ustc_command, markets_command
-)
 
 # ============================================================
-# HEALTH CHECK SERVER (keeps Render free tier alive)
+# HEALTH CHECK SERVER
 # ============================================================
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -38,101 +44,73 @@ def run_health_server():
     server = HTTPServer(('0.0.0.0', 10000), HealthHandler)
     server.serve_forever()
 
+
 # ============================================================
-# AUTO-POSTING ENGINE
+# AUTO-POSTING ENGINE (runs in background thread)
 # ============================================================
-posted_news_urls = set()
-posted_survival_urls = set()
+posted_urls = set()
 
 def auto_post_loop(bot_token: str):
-    """Background loop that auto-posts news and price alerts."""
+    """Background loop: auto-posts news and price alerts to the group."""
     bot = Bot(token=bot_token)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
+    # Initial delay to let bot fully start
+    time.sleep(10)
+    logger.info("Auto-posting engine started!")
+
     while True:
         try:
-            # Only auto-post if GROUP_ID is configured
             if GROUP_ID and GROUP_ID != "":
-                # Auto-post crypto news
-                loop.run_until_complete(auto_post_crypto_news(bot))
-                time.sleep(5)
+                # Post news from ALL categories
+                for category, feeds in NEWS_FEEDS.items():
+                    loop.run_until_complete(
+                        auto_post_category(bot, category, feeds)
+                    )
+                    time.sleep(3)
 
-                # Auto-post survival/geopolitics news
-                loop.run_until_complete(auto_post_survival_news(bot))
-                time.sleep(5)
-
-                # Auto-post price alert for significant movers
-                loop.run_until_complete(auto_post_price_alert(bot))
+                # Post market pulse
+                loop.run_until_complete(auto_post_market_pulse(bot))
 
         except Exception as e:
-            logger.error(f"Auto-post error: {e}")
+            logger.error(f"Auto-post cycle error: {e}")
 
-        # Wait 5 minutes before next cycle
-        time.sleep(300)
-
-
-async def auto_post_crypto_news(bot: Bot):
-    """Fetch and post latest crypto news to the group."""
-    global posted_news_urls
-    try:
-        feed = feedparser.parse("https://cointelegraph.com/rss")
-        for entry in feed.entries[:3]:
-            if entry.link not in posted_news_urls:
-                posted_news_urls.add(entry.link)
-
-                msg = (
-                    f"📰 <b>CRYPTO NEWS ALERT</b>\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"🔹 <b>{entry.title}</b>\n\n"
-                    f"🔗 <a href='{entry.link}'>Read Full Article</a>\n\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"⚡ <i>The Final Trade — All glory to God</i>"
-                )
-
-                topic_id = int(TOPIC_NEWS) if TOPIC_NEWS and TOPIC_NEWS != "0" else None
-
-                await bot.send_message(
-                    chat_id=int(GROUP_ID),
-                    text=msg,
-                    parse_mode=ParseMode.HTML,
-                    disable_web_page_preview=False,
-                    message_thread_id=topic_id
-                )
-                # Stagger posts
-                await asyncio.sleep(2)
-
-        # Keep set from growing too large
-        if len(posted_news_urls) > 100:
-            posted_news_urls = set(list(posted_news_urls)[-50:])
-
-    except Exception as e:
-        logger.error(f"Crypto news auto-post error: {e}")
+        # Wait 10 minutes between cycles
+        time.sleep(600)
 
 
-async def auto_post_survival_news(bot: Bot):
-    """Fetch and post geopolitics/survival news."""
-    global posted_survival_urls
-    try:
-        feeds = [
-            "https://www.reuters.com/world/rss",
-        ]
-        for rss_url in feeds:
+async def auto_post_category(bot: Bot, category: str, feeds: list):
+    """Fetch RSS feeds for a category and auto-post new entries."""
+    global posted_urls
+    config = CATEGORY_CONFIG.get(category, {"emoji": "📰", "label": category.upper(), "color": "⚪"})
+
+    # Determine which topic to post to
+    topic_map = {
+        "crypto": TOPIC_NEWS,
+        "world": TOPIC_SURVIVAL,
+        "survival": TOPIC_SURVIVAL,
+        "science": TOPIC_NEWS,
+    }
+    topic_id_str = topic_map.get(category, "0")
+    topic_id = int(topic_id_str) if topic_id_str and topic_id_str != "0" else None
+
+    for rss_url in feeds:
+        try:
             feed = feedparser.parse(rss_url)
             for entry in feed.entries[:2]:
-                if entry.link not in posted_survival_urls:
-                    posted_survival_urls.add(entry.link)
+                if entry.link not in posted_urls:
+                    posted_urls.add(entry.link)
 
                     msg = (
-                        f"🌍 <b>GEOPOLITICS & SURVIVAL ALERT</b>\n"
+                        f"{config['emoji']} <b>{config['label']} ALERT</b>\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        f"🔸 <b>{entry.title}</b>\n\n"
-                        f"🔗 <a href='{entry.link}'>Full Report</a>\n\n"
+                        f"{config['color']} <b>{entry.title}</b>\n\n"
+                        f"🔗 <a href='{entry.link}'>Read Full Report</a>\n\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        f"⚡ <i>The Final Trade — All glory to God</i>"
+                        f"✝️ <i>The Final Trade — All glory to God</i>\n"
+                        f"#TheFinalTrade #{category}"
                     )
-
-                    topic_id = int(TOPIC_SURVIVAL) if TOPIC_SURVIVAL and TOPIC_SURVIVAL != "0" else None
 
                     await bot.send_message(
                         chat_id=int(GROUP_ID),
@@ -141,35 +119,41 @@ async def auto_post_survival_news(bot: Bot):
                         disable_web_page_preview=False,
                         message_thread_id=topic_id
                     )
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(3)
 
-        if len(posted_survival_urls) > 100:
-            posted_survival_urls = set(list(posted_survival_urls)[-50:])
+        except Exception as e:
+            logger.error(f"Auto-post {category} error for {rss_url}: {e}")
 
-    except Exception as e:
-        logger.error(f"Survival news auto-post error: {e}")
+    # Prevent memory leak from growing set
+    if len(posted_urls) > 200:
+        posted_urls = set(list(posted_urls)[-100:])
 
 
-async def auto_post_price_alert(bot: Bot):
-    """Post price overview for major coins."""
+async def auto_post_market_pulse(bot: Bot):
+    """Auto-post a market overview with AI signals to the group."""
     try:
         coins = "bitcoin,ethereum,solana,binancecoin,terra-luna,terrausd"
         url = f"https://api.coingecko.com/api/v3/simple/price?ids={coins}&vs_currencies=usd&include_24hr_change=true"
         data = requests.get(url, timeout=10).json()
 
         display = [
-            ("bitcoin", "BTC", "🟠"),
-            ("ethereum", "ETH", "🔷"),
-            ("solana", "SOL", "🟣"),
-            ("binancecoin", "BNB", "🟡"),
-            ("terra-luna", "LUNC", "🔵"),
-            ("terrausd", "USTC", "🟢"),
+            ("bitcoin", "BTC", "🟠"), ("ethereum", "ETH", "🔷"),
+            ("solana", "SOL", "🟣"), ("binancecoin", "BNB", "🟡"),
+            ("terra-luna", "LUNC", "🔵"), ("terrausd", "USTC", "🟢"),
         ]
 
+        # Fear & Greed
+        fg_text = ""
+        try:
+            fg = requests.get(FEAR_GREED_API, timeout=5).json()['data'][0]
+            fg_text = f"😱 Fear & Greed: <b>{fg['value']}</b> ({fg['value_classification']})\n"
+        except:
+            pass
+
         lines = [
-            "📊 <b>MARKET PULSE — AUTO UPDATE</b>",
+            "📊 <b>MARKET PULSE — AUTO SIGNAL</b>",
             "━━━━━━━━━━━━━━━━━━━━━━━",
-            ""
+            fg_text
         ]
 
         for cg_id, symbol, emoji in display:
@@ -182,8 +166,10 @@ async def auto_post_price_alert(bot: Bot):
 
         lines.extend([
             "",
+            f"📈 <a href='https://www.weex.com/en?vipCode={WEEX_REF}'>Trade Now on WEEX</a>",
             "━━━━━━━━━━━━━━━━━━━━━━━",
-            "⚡ <i>The Final Trade — All glory to God</i>"
+            "✝️ <i>The Final Trade — All glory to God</i>",
+            "#TheFinalTrade #MarketPulse #crypto"
         ])
 
         topic_id = int(TOPIC_SIGNALS) if TOPIC_SIGNALS and TOPIC_SIGNALS != "0" else None
@@ -194,9 +180,8 @@ async def auto_post_price_alert(bot: Bot):
             parse_mode=ParseMode.HTML,
             message_thread_id=topic_id
         )
-
     except Exception as e:
-        logger.error(f"Price alert auto-post error: {e}")
+        logger.error(f"Market pulse auto-post error: {e}")
 
 
 # ============================================================
@@ -204,33 +189,38 @@ async def auto_post_price_alert(bot: Bot):
 # ============================================================
 if __name__ == '__main__':
     if not BOT_TOKEN:
-        print("Please configure BOT_TOKEN environment variable.")
+        print("ERROR: BOT_TOKEN not set.")
         exit(1)
 
-    # Start health check server
-    health_thread = threading.Thread(target=run_health_server, daemon=True)
-    health_thread.start()
-    print("Health server running on port 10000")
+    # Health server
+    threading.Thread(target=run_health_server, daemon=True).start()
+    print("Health server on port 10000")
 
-    # Start auto-posting engine (only if GROUP_ID is set)
-    if GROUP_ID and GROUP_ID != "":
-        auto_thread = threading.Thread(target=auto_post_loop, args=(BOT_TOKEN,), daemon=True)
-        auto_thread.start()
-        print(f"Auto-posting engine started for group {GROUP_ID}")
+    # Auto-posting engine
+    if GROUP_ID:
+        threading.Thread(target=auto_post_loop, args=(BOT_TOKEN,), daemon=True).start()
+        print(f"Auto-posting engine armed for group {GROUP_ID}")
     else:
-        print("No GROUP_ID set — auto-posting disabled. Set GROUP_ID env var to enable.")
+        print("No GROUP_ID — auto-posting disabled. Set GROUP_ID env var to enable.")
 
-    # Build and start the bot
+    # Build application
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
+    # Command handlers
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("price", price_command))
+    app.add_handler(CommandHandler("token", token_command))
     app.add_handler(CommandHandler("markets", markets_command))
+    app.add_handler(CommandHandler("forecast", forecast_command))
     app.add_handler(CommandHandler("news", news_command))
     app.add_handler(CommandHandler("survival", survival_command))
+    app.add_handler(CommandHandler("science", science_command))
     app.add_handler(CommandHandler("dashboard", dashboard_command))
     app.add_handler(CommandHandler("lunc", lunc_command))
     app.add_handler(CommandHandler("ustc", ustc_command))
 
-    print("Bot is up and running. All glory to God!")
+    # Inline button callback handler
+    app.add_handler(CallbackQueryHandler(button_callback))
+
+    print("✝️ The Final Trade Bot — All glory to God! Bot is LIVE.")
     app.run_polling()
