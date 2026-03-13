@@ -73,23 +73,28 @@ def auto_post_loop(bot_token: str):
     while True:
         try:
             if GROUP_ID:
-                # Cycle through ALL categories slowly
+                # We want Crypto Signals to appear just as much as news.
+                # So we will fire a token setup after every 2 news categories.
+                cat_count = 0
                 for category, feeds in NEWS_FEEDS.items():
                     loop.run_until_complete(auto_post_category(bot, category, feeds))
-                    # STEADY DRIP: Short 30-second delay between categories.
-                    # This ensures a continuous real-time flow without massive 10-minute dead zones.
                     time.sleep(30)
+                    
+                    cat_count += 1
+                    
+                    # Every 2 news categories, fire a Crypto Trade Setup
+                    if cat_count % 2 == 0:
+                        loop.run_until_complete(auto_post_hottest_tokens(bot))
+                        time.sleep(15)
+                    
+                    # Every 4 news categories, fire the broad Market Pulse
+                    if cat_count % 4 == 0:
+                        loop.run_until_complete(auto_post_market_pulse(bot))
+                        time.sleep(15)
 
-                # Market pulse with Fear & Greed & Hottest Tokens
-                pulse_counter += 1
-                if pulse_counter >= 3:
-                    loop.run_until_complete(auto_post_market_pulse(bot))
-                    loop.run_until_complete(auto_post_hottest_tokens(bot))
-                    pulse_counter = 0
-
-                # Survival hack auto-post
+                # Survival hack auto-post once per full cycle of news
                 hack_counter += 1
-                if hack_counter >= 5:
+                if hack_counter >= 2:
                     loop.run_until_complete(auto_post_survival_hack(bot))
                     hack_counter = 0
 
