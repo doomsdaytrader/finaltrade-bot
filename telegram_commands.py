@@ -6,7 +6,8 @@ from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from config import (
-    WEEX_REF, TRC20_WALLET, BTC_WALLET, ETH_WALLET,
+    WEEX_REF, BYDFI_REF, BITUNIX_REF, BTCC_REF, KCEX_REF,
+    TRC20_WALLET, BTC_WALLET, ETH_WALLET,
     COINGECKO_MARKETS, COINGECKO_COIN, FEAR_GREED_API,
     NEWS_FEEDS, CATEGORY_CONFIG
 )
@@ -278,7 +279,8 @@ async def _send_full_signal(chat_id, coin_id, context):
 
         def arrow(v): return "🟢▲" if v > 0 else "🔴▼" if v < 0 else "⚪▬"
 
-        weex_link = f"https://www.weex.com/en/spot/{symbol}_USDT?vipCode={WEEX_REF}"
+        from token_alerts import get_exchange_for_coin
+        exchange_name, affiliate_link = get_exchange_for_coin(symbol, "MANUAL SIGNAL")
 
         caption = (
             f"🚨 <b>{name} ({symbol}) — FULL SIGNAL</b>\n"
@@ -298,7 +300,7 @@ async def _send_full_signal(chat_id, coin_id, context):
         )
 
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(f"📈 Trade {symbol} on WEEX", url=weex_link)],
+            [InlineKeyboardButton(f"📈 Trade {symbol} on {exchange_name}", url=affiliate_link)],
             [InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_back")],
         ])
 
@@ -401,9 +403,19 @@ async def _send_markets(chat_id, context):
                 mc_part = f"  [{mc_s}]" if mc_s else ""
                 lines.append(f"{emoji} <b>{symbol}</b>  {p_str}  {arrow}{change:+.1f}%{mc_part}")
 
+        import random
+        exchanges = [
+            ("WEEX", f"https://www.weex.com/en/spot/BTC_USDT?vipCode={WEEX_REF}"),
+            ("BYDFi", f"https://partner.bydfi.com/register?vipCode={BYDFI_REF}&f=Thefinaltrade"),
+            ("Bitunix", f"https://www.bitunix.com/register?vipCode={BITUNIX_REF}"),
+            ("BTCC", f"https://www.btcc.com/en-US/register?inviteCode={BTCC_REF}"),
+            ("KCEX", f"https://www.kcex.com/register?inviteCode={KCEX_REF}")
+        ]
+        exchange_name, affiliate_link = random.choice(exchanges)
+
         lines.extend([
             "",
-            f"📈 <a href='https://www.weex.com/en?vipCode={WEEX_REF}'>Trade Now on WEEX</a>",
+            f"📈 <a href='{affiliate_link}'>Trade Now on {exchange_name}</a>",
             "━━━━━━━━━━━━━━━━━━━━━━━━━━",
             "✝️ <i>The Final Trade — All glory to God</i>"
         ])
