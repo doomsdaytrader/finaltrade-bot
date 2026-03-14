@@ -11,7 +11,7 @@ from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 from telegram.constants import ParseMode
 from config import (
-    BOT_TOKEN, GROUP_ID, WEEX_REF,
+    BOT_TOKEN, GROUP_ID, WEEX_REF, BYDFI_REF, BITUNIX_REF, BTCC_REF, KCEX_REF,
     TOPIC_NEWS, TOPIC_SURVIVAL, TOPIC_SIGNALS,
     NEWS_FEEDS, CATEGORY_CONFIG, FEAR_GREED_API
 )
@@ -274,9 +274,18 @@ async def auto_post_market_pulse(bot: Bot):
                 p_str = f"${price:,.2f}" if price >= 1 else f"${price:,.6f}"
                 lines.append(f"{emoji} <b>{symbol}</b>  {p_str}  {arrow}{change:+.1f}%")
 
+        exchanges = [
+            ("WEEX", f"https://www.weex.com/en/spot/BTC_USDT?vipCode={WEEX_REF}"),
+            ("BYDFi", f"https://partner.bydfi.com/register?vipCode={BYDFI_REF}&f=Thefinaltrade"),
+            ("Bitunix", f"https://www.bitunix.com/register?vipCode={BITUNIX_REF}"),
+            ("BTCC", f"https://www.btcc.com/en-US/register?inviteCode={BTCC_REF}"),
+            ("KCEX", f"https://www.kcex.com/register?inviteCode={KCEX_REF}")
+        ]
+        exchange_name, affiliate_link = random.choice(exchanges)
+
         lines.extend([
             "",
-            f"📈 <a href='https://www.weex.com/en?vipCode={WEEX_REF}'>Trade on WEEX</a>",
+            f"📈 <a href='{affiliate_link}'>Trade on {exchange_name}</a>",
             "━━━━━━━━━━━━━━━━━━━━━━━━━━",
             "✝️ <i>The Final Trade — All glory to God</i>",
             "#TheFinalTrade #MarketPulse #crypto"
