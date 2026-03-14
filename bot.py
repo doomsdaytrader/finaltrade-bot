@@ -16,7 +16,7 @@ from config import (
     NEWS_FEEDS, CATEGORY_CONFIG, FEAR_GREED_API
 )
 from telegram_commands import (
-    start_command, price_command, token_command,
+    start_command, price_command, token_command, hot_command,
     news_command, survival_command, science_command,
     conflict_command, health_command, energy_command, finance_command,
     dashboard_command, lunc_command, ustc_command,
@@ -318,6 +318,7 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("price", price_command))
     app.add_handler(CommandHandler("token", token_command))
+    app.add_handler(CommandHandler("hot", hot_command))
     app.add_handler(CommandHandler("markets", markets_command))
     app.add_handler(CommandHandler("forecast", forecast_command))
     app.add_handler(CommandHandler("news", news_command))
