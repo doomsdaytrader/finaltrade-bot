@@ -10,7 +10,6 @@ from config import (
     COINGECKO_MARKETS, COINGECKO_COIN, FEAR_GREED_API,
     NEWS_FEEDS, CATEGORY_CONFIG
 )
-from token_alerts import auto_post_hottest_tokens
 
 
 # ============================================================
@@ -345,6 +344,8 @@ async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def hot_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Manually triggers the Hottest Token scanner and dumps a new Setup."""
+    from token_alerts import auto_post_hottest_tokens
+    
     msg = await update.message.reply_text("📡 <i>Scanning highest volume breakout targets...</i>", parse_mode=ParseMode.HTML)
     try:
         # Override bot so it posts back to the same chat if we are testing outside supergroup
