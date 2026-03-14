@@ -10,6 +10,7 @@ from config import (
     COINGECKO_MARKETS, COINGECKO_COIN, FEAR_GREED_API,
     NEWS_FEEDS, CATEGORY_CONFIG
 )
+from token_alerts import auto_post_hottest_tokens
 
 
 # ============================================================
@@ -341,6 +342,16 @@ async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     coin_id = ALIASES.get(context.args[0].lower(), context.args[0].lower())
     await _send_full_signal(update.message.chat.id, coin_id, context)
+
+async def hot_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Manually triggers the Hottest Token scanner and dumps a new Setup."""
+    msg = await update.message.reply_text("📡 <i>Scanning highest volume breakout targets...</i>", parse_mode=ParseMode.HTML)
+    try:
+        # Override bot so it posts back to the same chat if we are testing outside supergroup
+        await auto_post_hottest_tokens(context.bot)
+        await msg.delete()
+    except Exception as e:
+        await msg.edit_text(f"❌ Error: {e}")
 
 
 # ============================================================
