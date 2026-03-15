@@ -10,8 +10,8 @@ from telegram_commands import estimate_rsi
 
 logger = logging.getLogger(__name__)
 
-# Tracked alerts so we don't spam the same coin twice in a row
-last_alerted_coin = None
+# Keep track of recently alerted coins
+recent_alerts = []
 
 # Affiliate categorization mapper
 def get_exchange_for_coin(symbol, category):
@@ -52,51 +52,63 @@ def get_exchange_for_coin(symbol, category):
 
 async def auto_post_hottest_tokens(bot: Bot):
     """
-    Scans the market for the top gainers, losers, and hottest volume spikes, 
-    and posts a robust trading setup using the user's affiliate links.
+    Scans the Top 20 market cap tokens + Terra Ecosystem (LUNC/USTC) and
+    posts a robust trading setup using the user's affiliate links.
     """
-    global last_alerted_coin
+    global recent_alerts
 
     try:
-        url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=150&page=1&sparkline=true&price_change_percentage=1h,24h"
+        # Fetch Top 20 tokens by Market Cap
+        url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=true&price_change_percentage=1h,24h"
         data = requests.get(url, timeout=15).json()
 
+        # Specifically fetch Terra Tokens regardless of Top 20 rank
+        terra_url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=terra-luna,terrausd&sparkline=true&price_change_percentage=1h,24h"
+        terra_data = requests.get(terra_url, timeout=15).json()
+
+        if isinstance(data, list) and isinstance(terra_data, list):
+            # Combine without duplicating if somehow terra enters top 20
+            existing_ids = {c['id'] for c in data}
+            for tc in terra_data:
+                if tc['id'] not in existing_ids:
+                    data.append(tc)
+        
         if not data or not isinstance(data, list):
             return
 
-        # Find hot coins: Top Gainer, Top Loser, Vol Spike
-        valid_coins = [c for c in data if c.get('price_change_percentage_24h') is not None and c.get('total_volume') and c.get('current_price')]
-        
-        # Sort contexts
-        gainers = sorted(valid_coins, key=lambda x: x['price_change_percentage_24h'], reverse=True)
-        losers = sorted(valid_coins, key=lambda x: x['price_change_percentage_24h'])
-
-        # Pick one dynamically (70% chance gainer/spike, 30% chance loser/short setup)
-        pick_type = random.choices(["gainer", "loser"], weights=[0.7, 0.3])[0]
+        # Sort by 24h volatility (absolute change) to find the most exciting action
+        valid_coins = [c for c in data if c.get('price_change_percentage_24h') is not None]
+        valid_coins.sort(key=lambda x: abs(x['price_change_percentage_24h']), reverse=True)
 
         target_coin = None
-
-        if pick_type == "gainer":
-            # Avoid the exact same coin twice
-            for c in gainers:
-                if getattr(c, 'id', c.get('id')) != last_alerted_coin and c['price_change_percentage_24h'] >= 5:
-                    target_coin = c
-                    category = "🚀 TOP GAINER ALERT"
-                    trade_dir = "LONG 🟢"
-                    break
-        else:
-            for c in losers:
-                if getattr(c, 'id', c.get('id')) != last_alerted_coin and c['price_change_percentage_24h'] <= -5:
-                    target_coin = c
-                    category = "🩸 TOP LOSER / REVERSAL ZONES"
-                    trade_dir = "SHORT 🔴"
-                    break
+        for c in valid_coins:
+            if c['id'] not in recent_alerts:
+                target_coin = c
+                break
+        
+        # If all top cycled, clear history and start over
+        if not target_coin and valid_coins:
+            recent_alerts.clear()
+            target_coin = valid_coins[0]
 
         if not target_coin:
-            return  # No major movers found right now
+            return
 
-        # Update cache
-        last_alerted_coin = target_coin['id']
+        # Update cache (keep last 12 to ensure rotation)
+        recent_alerts.append(target_coin['id'])
+        if len(recent_alerts) > 12:
+            recent_alerts.pop(0)
+
+        # Categorize
+        if target_coin['price_change_percentage_24h'] >= 2:
+            category = "🚀 BULLISH MOMENTUM ALERT"
+            trade_dir = "LONG 🟢"
+        elif target_coin['price_change_percentage_24h'] <= -2:
+            category = "🩸 REVERSAL & DIP OPPORTUNITY"
+            trade_dir = "SHORT 🔴"
+        else:
+            category = "⚖️ RANGE BOUND SCALP ZONES"
+            trade_dir = "SCALP ⚪"
 
         # Extract data
         name = target_coin['name']
@@ -113,18 +125,24 @@ async def auto_post_hottest_tokens(bot: Bot):
         rsi = estimate_rsi(sparkline[-24:]) if len(sparkline) >= 14 else 50.0
 
         # Build trade setup logic
-        if pick_type == "gainer":
+        if trade_dir == "LONG 🟢":
             entry_price = price * 0.985  # Buy on short dip
             take_profit = price * 1.05   # Target +5%
             stop_loss = price * 0.95     # Stop -5%
             leverage = "10x-20x"
             reason = "High volume influx / Bullish momentum surge."
-        else:
+        elif trade_dir == "SHORT 🔴":
             entry_price = price * 1.015  # Short on minor bounce
             take_profit = price * 0.95   # Target -5% down
             stop_loss = price * 1.05     # Stop +5%
             leverage = "5x-10x"
             reason = "RSI cooling down / Heavy distribution spotted."
+        else:
+            entry_price = price
+            take_profit = price * 1.02
+            stop_loss = price * 0.98
+            leverage = "20x-50x (High Risk)"
+            reason = "Consolidating. Play tight channels."
 
         # Fetch exchange for this token
         exchange_name, affiliate_link = get_exchange_for_coin(symbol, category)
