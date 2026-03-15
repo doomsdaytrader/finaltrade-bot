@@ -12,7 +12,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 from telegram.constants import ParseMode
 from config import (
     BOT_TOKEN, GROUP_ID, WEEX_REF, BYDFI_REF, BITUNIX_REF, BTCC_REF, KCEX_REF,
-    TOPIC_NEWS, TOPIC_SURVIVAL, TOPIC_SIGNALS,
+    TOPIC_NEWS, TOPIC_SURVIVAL, TOPIC_SIGNALS, TOPIC_MARKET,
     NEWS_FEEDS, CATEGORY_CONFIG, FEAR_GREED_API
 )
 from telegram_commands import (
@@ -291,7 +291,7 @@ async def auto_post_market_pulse(bot: Bot):
             "#TheFinalTrade #MarketPulse #crypto"
         ])
 
-        topic_id = int(TOPIC_SIGNALS) if TOPIC_SIGNALS and TOPIC_SIGNALS != "0" else None
+        topic_id = int(TOPIC_MARKET) if TOPIC_MARKET and TOPIC_MARKET != "0" else None
 
         await bot.send_message(
             chat_id=int(GROUP_ID), text="\n".join(lines),
