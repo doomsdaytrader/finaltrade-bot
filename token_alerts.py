@@ -43,6 +43,8 @@ def get_exchange_for_coin(symbol, category):
         # Hot Spikes / Memes / Gainers / Losers -> Bitunix or KCEX
         exchanges = [
             ("Bitunix", f"https://www.bitunix.com/register?vipCode={BITUNIX_REF}"),
+            ("Bitunix", f"https://www.bitunix.com/register?vipCode={BITUNIX_REF}"),
+            ("KCEX", f"https://www.kcex.com/register?inviteCode={KCEX_REF}"),
             ("KCEX", f"https://www.kcex.com/register?inviteCode={KCEX_REF}")
         ]
         return random.choice(exchanges)
