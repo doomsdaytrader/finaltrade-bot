@@ -299,10 +299,17 @@ async def _send_full_signal(chat_id, coin_id, context):
             f"✝️ <i>The Final Trade — All glory to God</i>"
         )
 
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(f"📈 Trade {symbol} on {exchange_name}", url=affiliate_link)],
-            [InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_back")],
-        ])
+        buttons = [
+            [InlineKeyboardButton(f"📈 Trade {symbol} on {exchange_name}", url=affiliate_link)]
+        ]
+        
+        # Inject Epic Mini-App Button for Terra classic community
+        if symbol in ["LUNC", "USTC"]:
+            buttons.append([InlineKeyboardButton("🔥 LUNC TO $0.37 MINI-APP", url="https://finaltrade-dashboard-91me6lozz-irayecrypto-1565s-projects.vercel.app/lunc/index.html")])
+        
+        buttons.append([InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_back")])
+        
+        keyboard = InlineKeyboardMarkup(buttons)
 
         if image_url:
             await context.bot.send_photo(chat_id=chat_id, photo=image_url, caption=caption, parse_mode=ParseMode.HTML, reply_markup=keyboard)
