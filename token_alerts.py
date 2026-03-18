@@ -16,7 +16,14 @@ import time
 recent_alerts = []
 
 # Cache for market data to prevent 429s (Free tier is only ~10-50 calls/min)
-market_cache = []
+# Pre-seed with basic data so we have something to fire on cold start
+market_cache = [
+    {"id": "bitcoin", "name": "Bitcoin", "symbol": "btc", "current_price": 60000, "price_change_percentage_24h": 0.5, "total_volume": 30000000000, "market_cap": 1200000000000, "image": "https://assets.coingecko.com/coins/images/1/large/bitcoin.png"},
+    {"id": "ethereum", "name": "Ethereum", "symbol": "eth", "current_price": 3000, "price_change_percentage_24h": -1.2, "total_volume": 15000000000, "market_cap": 400000000000, "image": "https://assets.coingecko.com/coins/images/279/large/ethereum.png"},
+    {"id": "solana", "name": "Solana", "symbol": "sol", "current_price": 140, "price_change_percentage_24h": 4.5, "total_volume": 4000000000, "market_cap": 70000000000, "image": "https://assets.coingecko.com/coins/images/4128/large/solana.png"},
+    {"id": "terra-luna", "name": "Terra Luna Classic", "symbol": "lunc", "current_price": 0.0001, "price_change_percentage_24h": 1.0, "total_volume": 50000000, "market_cap": 600000000, "image": "https://assets.coingecko.com/coins/images/8284/large/01_LunaClassic_color.png"},
+    {"id": "terrausd", "name": "TerraClassicUSD", "symbol": "ustc", "current_price": 0.02, "price_change_percentage_24h": -0.5, "total_volume": 10000000, "market_cap": 200000000, "image": "https://assets.coingecko.com/coins/images/12167/large/ustc.png"}
+]
 last_fetch_time = 0
 CACHE_DURATION = 300 # 5 minutes cooldown for API calls
 
@@ -70,30 +77,32 @@ async def auto_post_hottest_tokens(bot: Bot):
     # Only fetch if cache is old
     if (current_time - last_fetch_time) > CACHE_DURATION:
         try:
-            logger.info("[TOKEN SCANNER] Cache expired or empty. Fetching fresh data from CoinGecko...")
+            logger.info("[TOKEN SCANNER] Cache expired. Fetching fresh data from CoinGecko...")
+            # We set last_fetch_time NOW to ensure we don't spam retries if we get 429'd
+            last_fetch_time = current_time
+            
             # Fetch Top 20 tokens by Market Cap
             url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=true&price_change_percentage=1h,24h"
             resp = requests.get(url, timeout=15)
             logger.info(f"[TOKEN SCANNER] CoinGecko Top20 status: {resp.status_code}")
             
             if resp.status_code == 200:
-                data = resp.json()
+                fetched_data = resp.json()
                 # Specifically fetch Terra Tokens
                 terra_url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=terra-luna,terrausd&sparkline=true&price_change_percentage=1h,24h"
                 terra_resp = requests.get(terra_url, timeout=15)
                 terra_data = terra_resp.json() if terra_resp.status_code == 200 else []
                 
-                if isinstance(data, list):
-                    existing_ids = {c['id'] for c in data}
+                if isinstance(fetched_data, list):
+                    existing_ids = {c['id'] for c in fetched_data}
                     for tc in terra_data:
                         if tc['id'] not in existing_ids:
-                            data.append(tc)
+                            fetched_data.append(tc)
                     
-                    market_cache = data
-                    last_fetch_time = current_time
-                    logger.info(f"[TOKEN SCANNER] Cache updated with {len(data)} coins.")
+                    market_cache = fetched_data
+                    logger.info(f"[TOKEN SCANNER] Cache updated with {len(fetched_data)} coins.")
             elif resp.status_code == 429:
-                logger.warning("[TOKEN SCANNER] CoinGecko Rate Limit reached (429). Falling back to previous cache.")
+                logger.warning("[TOKEN SCANNER] CoinGecko Rate Limit reached (429). Will retry in 5 minutes.")
                 data = market_cache
             else:
                 logger.error(f"[TOKEN SCANNER] CoinGecko Error: {resp.status_code}")
