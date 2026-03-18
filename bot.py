@@ -28,7 +28,11 @@ from survival_hacks import auto_post_survival_hack
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler("bot.log"),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -43,10 +47,21 @@ last_digest_time = time.time()
 # ============================================================
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'application/json')
-        self.end_headers()
-        self.wfile.write(b'{"status":"alive","bot":"TheFinalTradeBot","glory":"to God","version":"3.0"}')
+        if self.path == '/logs':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            try:
+                with open("bot.log", "r") as f:
+                    lines = f.readlines()
+                    self.wfile.write("".join(lines[-100:]).encode())
+            except Exception as e:
+                self.wfile.write(str(e).encode())
+        else:
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"status":"alive","bot":"TheFinalTradeBot"}')
     def log_message(self, format, *args):
         pass
 
