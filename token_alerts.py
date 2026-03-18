@@ -58,22 +58,27 @@ async def auto_post_hottest_tokens(bot: Bot):
     global recent_alerts
 
     try:
+        logger.info("[TOKEN SCANNER] Fetching Top 20 + Terra tokens from CoinGecko...")
         # Fetch Top 20 tokens by Market Cap
         url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=true&price_change_percentage=1h,24h"
-        data = requests.get(url, timeout=15).json()
+        resp = requests.get(url, timeout=15)
+        logger.info(f"[TOKEN SCANNER] CoinGecko Top20 status: {resp.status_code}")
+        data = resp.json()
 
         # Specifically fetch Terra Tokens regardless of Top 20 rank
         terra_url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=terra-luna,terrausd&sparkline=true&price_change_percentage=1h,24h"
-        terra_data = requests.get(terra_url, timeout=15).json()
+        terra_resp = requests.get(terra_url, timeout=15)
+        terra_data = terra_resp.json()
 
         if isinstance(data, list) and isinstance(terra_data, list):
-            # Combine without duplicating if somehow terra enters top 20
             existing_ids = {c['id'] for c in data}
             for tc in terra_data:
                 if tc['id'] not in existing_ids:
                     data.append(tc)
+            logger.info(f"[TOKEN SCANNER] Total coins loaded: {len(data)}")
         
         if not data or not isinstance(data, list):
+            logger.warning("[TOKEN SCANNER] No data returned from CoinGecko!")
             return
 
         # Sort by 24h volatility (absolute change) to find the most exciting action
@@ -92,12 +97,15 @@ async def auto_post_hottest_tokens(bot: Bot):
             target_coin = valid_coins[0]
 
         if not target_coin:
+            logger.warning("[TOKEN SCANNER] No target coin found after filtering!")
             return
 
         # Update cache (keep last 12 to ensure rotation)
         recent_alerts.append(target_coin['id'])
         if len(recent_alerts) > 12:
             recent_alerts.pop(0)
+        
+        logger.info(f"[TOKEN SCANNER] Selected: {target_coin['name']} ({target_coin['symbol'].upper()}) | 24h: {target_coin.get('price_change_percentage_24h',0):+.2f}%")
 
         # Categorize
         if target_coin['price_change_percentage_24h'] >= 2:
