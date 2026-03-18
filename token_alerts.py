@@ -10,8 +10,15 @@ from telegram_commands import estimate_rsi
 
 logger = logging.getLogger(__name__)
 
+import time
+
 # Keep track of recently alerted coins
 recent_alerts = []
+
+# Cache for market data to prevent 429s (Free tier is only ~10-50 calls/min)
+market_cache = []
+last_fetch_time = 0
+CACHE_DURATION = 300 # 5 minutes cooldown for API calls
 
 # Affiliate categorization mapper
 def get_exchange_for_coin(symbol, category):
@@ -55,30 +62,54 @@ async def auto_post_hottest_tokens(bot: Bot):
     Scans the Top 20 market cap tokens + Terra Ecosystem (LUNC/USTC) and
     posts a robust trading setup using the user's affiliate links.
     """
-    global recent_alerts
+    global recent_alerts, market_cache, last_fetch_time
 
+    current_time = time.time()
+    data = []
+
+    # Only fetch if cache is old
+    if (current_time - last_fetch_time) > CACHE_DURATION:
+        try:
+            logger.info("[TOKEN SCANNER] Cache expired or empty. Fetching fresh data from CoinGecko...")
+            # Fetch Top 20 tokens by Market Cap
+            url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=true&price_change_percentage=1h,24h"
+            resp = requests.get(url, timeout=15)
+            logger.info(f"[TOKEN SCANNER] CoinGecko Top20 status: {resp.status_code}")
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                # Specifically fetch Terra Tokens
+                terra_url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=terra-luna,terrausd&sparkline=true&price_change_percentage=1h,24h"
+                terra_resp = requests.get(terra_url, timeout=15)
+                terra_data = terra_resp.json() if terra_resp.status_code == 200 else []
+                
+                if isinstance(data, list):
+                    existing_ids = {c['id'] for c in data}
+                    for tc in terra_data:
+                        if tc['id'] not in existing_ids:
+                            data.append(tc)
+                    
+                    market_cache = data
+                    last_fetch_time = current_time
+                    logger.info(f"[TOKEN SCANNER] Cache updated with {len(data)} coins.")
+            elif resp.status_code == 429:
+                logger.warning("[TOKEN SCANNER] CoinGecko Rate Limit reached (429). Falling back to previous cache.")
+                data = market_cache
+            else:
+                logger.error(f"[TOKEN SCANNER] CoinGecko Error: {resp.status_code}")
+                data = market_cache
+
+        except Exception as e:
+            logger.error(f"[TOKEN SCANNER] Fetch error: {e}")
+            data = market_cache
+    else:
+        # Use existing cache
+        data = market_cache
+        logger.info(f"[TOKEN SCANNER] Using cached market data (age: {int(current_time - last_fetch_time)}s)")
+    
     try:
-        logger.info("[TOKEN SCANNER] Fetching Top 20 + Terra tokens from CoinGecko...")
-        # Fetch Top 20 tokens by Market Cap
-        url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=true&price_change_percentage=1h,24h"
-        resp = requests.get(url, timeout=15)
-        logger.info(f"[TOKEN SCANNER] CoinGecko Top20 status: {resp.status_code}")
-        data = resp.json()
-
-        # Specifically fetch Terra Tokens regardless of Top 20 rank
-        terra_url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=terra-luna,terrausd&sparkline=true&price_change_percentage=1h,24h"
-        terra_resp = requests.get(terra_url, timeout=15)
-        terra_data = terra_resp.json()
-
-        if isinstance(data, list) and isinstance(terra_data, list):
-            existing_ids = {c['id'] for c in data}
-            for tc in terra_data:
-                if tc['id'] not in existing_ids:
-                    data.append(tc)
-            logger.info(f"[TOKEN SCANNER] Total coins loaded: {len(data)}")
-        
         if not data or not isinstance(data, list):
-            logger.warning("[TOKEN SCANNER] No data returned from CoinGecko!")
+            logger.warning("[TOKEN SCANNER] No data available (cache empty and API failed)!")
             return
 
         # Sort by 24h volatility (absolute change) to find the most exciting action
