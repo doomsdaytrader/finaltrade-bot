@@ -78,36 +78,57 @@ def auto_post_loop(bot_token: str):
     bot = Bot(token=bot_token)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    time.sleep(15)
-    logger.info("Auto-posting engine V6 started! Continuous drip mode + 2hr digests.")
+    time.sleep(10)
+    logger.info("=== AUTO-POST ENGINE V13 STARTED === CONTINUOUS SIGNAL MODE ===")
 
-    pulse_counter = 0
     hack_counter = 0
     global last_digest_time
 
     while True:
         try:
             if GROUP_ID:
-                # We want Crypto Signals to appear just as much as news.
-                # So we will fire a token setup after every 2 news categories.
+                # =============================================
+                # PHASE 1: RAPID-FIRE CRYPTO SIGNAL BURST
+                # Fire 3 back-to-back token signals immediately
+                # =============================================
+                logger.info(">>> PHASE 1: Firing 3x rapid crypto signals...")
+                for i in range(3):
+                    try:
+                        loop.run_until_complete(auto_post_hottest_tokens(bot))
+                        logger.info(f">>> CRYPTO SIGNAL {i+1}/3 SENT SUCCESSFULLY")
+                    except Exception as sig_err:
+                        logger.error(f">>> CRYPTO SIGNAL {i+1}/3 FAILED: {sig_err}")
+                    time.sleep(8)
+
+                # =============================================
+                # PHASE 2: NEWS + SIGNAL INTERLEAVE
+                # After EVERY news category, fire a signal
+                # =============================================
+                logger.info(">>> PHASE 2: News + Signal interleave starting...")
                 cat_count = 0
                 for category, feeds in NEWS_FEEDS.items():
                     loop.run_until_complete(auto_post_category(bot, category, feeds))
-                    time.sleep(30)
+                    time.sleep(20)
                     
                     cat_count += 1
                     
-                    # Every 2 news categories, fire a Crypto Trade Setup
-                    if cat_count % 2 == 0:
+                    # Fire a crypto signal after EVERY news category
+                    try:
                         loop.run_until_complete(auto_post_hottest_tokens(bot))
-                        time.sleep(15)
+                        logger.info(f">>> CRYPTO SIGNAL after [{category}] SENT")
+                    except Exception as sig_err:
+                        logger.error(f">>> CRYPTO SIGNAL after [{category}] FAILED: {sig_err}")
+                    time.sleep(8)
                     
-                    # Every 4 news categories, fire the broad Market Pulse
+                    # Every 4 news categories, fire the Market Pulse
                     if cat_count % 4 == 0:
                         loop.run_until_complete(auto_post_market_pulse(bot))
-                        time.sleep(15)
+                        logger.info(">>> MARKET PULSE SENT")
+                        time.sleep(10)
 
-                # Survival hack auto-post once per full cycle of news
+                # =============================================
+                # PHASE 3: SURVIVAL + DIGEST
+                # =============================================
                 hack_counter += 1
                 if hack_counter >= 2:
                     loop.run_until_complete(auto_post_survival_hack(bot))
@@ -118,12 +139,14 @@ def auto_post_loop(bot_token: str):
                 if current_time - last_digest_time >= 7200:
                     loop.run_until_complete(auto_post_2hr_digest(bot))
                     last_digest_time = current_time
+                
+                logger.info("=== FULL CYCLE COMPLETE — Restarting in 10 seconds ===")
 
         except Exception as e:
             logger.error(f"Auto-post cycle error: {e}")
 
-        # Extremely short 15 second wait before restarting the entire cycle.
-        time.sleep(15)
+        # Short wait before restarting the entire cycle
+        time.sleep(10)
 
 
 async def auto_post_category(bot: Bot, category: str, feeds: list):
