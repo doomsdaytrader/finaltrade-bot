@@ -78,7 +78,7 @@ def auto_post_loop(bot_token: str):
     bot = Bot(token=bot_token)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    time.sleep(10)
+    time.sleep(5)
     logger.info("=== AUTO-POST ENGINE V13 STARTED === CONTINUOUS SIGNAL MODE ===")
 
     hack_counter = 0
@@ -86,10 +86,18 @@ def auto_post_loop(bot_token: str):
 
     while True:
         try:
+            # Render Free Tier Keep-Alive
+            try:
+                # Hits its OWN url and the API url to prevent sleep
+                requests.get("https://finaltrade-bot.onrender.com/", timeout=10)
+                requests.get("https://finaltrade-api.onrender.com/health", timeout=10)
+                logger.debug("Keep-Alive pings sent.")
+            except:
+                pass
+
             if GROUP_ID:
                 # =============================================
                 # PHASE 1: RAPID-FIRE CRYPTO SIGNAL BURST
-                # Fire 3 back-to-back token signals immediately
                 # =============================================
                 logger.info(">>> PHASE 1: Firing 3x rapid crypto signals...")
                 for i in range(3):
@@ -99,10 +107,9 @@ def auto_post_loop(bot_token: str):
                     except Exception as sig_err:
                         logger.error(f">>> CRYPTO SIGNAL {i+1}/3 FAILED: {sig_err}")
                     time.sleep(8)
-
+                
                 # =============================================
                 # PHASE 2: NEWS + SIGNAL INTERLEAVE
-                # After EVERY news category, fire a signal
                 # =============================================
                 logger.info(">>> PHASE 2: News + Signal interleave starting...")
                 cat_count = 0
