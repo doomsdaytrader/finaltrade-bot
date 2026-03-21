@@ -25,7 +25,7 @@ market_cache = [
     {"id": "terrausd", "name": "TerraClassicUSD", "symbol": "ustc", "current_price": 0.02, "price_change_percentage_24h": -0.5, "total_volume": 10000000, "market_cap": 200000000, "image": "https://assets.coingecko.com/coins/images/12167/large/ustc.png"}
 ]
 last_fetch_time = 0
-CACHE_DURATION = 300 # 5 minutes cooldown for API calls
+CACHE_DURATION = 60 # 1 minute cooldown for API calls to ensure high accuracy
 
 # Affiliate categorization mapper
 def get_exchange_for_coin(symbol, category):
