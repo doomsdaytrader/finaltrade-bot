@@ -32,30 +32,35 @@ def get_accurate_price(symbol):
     Fetches pinpoint accurate price from MEXC or Binance for a specific symbol.
     """
     symbol = symbol.upper()
+    trade_pair = f"{symbol}USDT"
     
-    # Try MEXC first (very fast, covers almost all tokens including LUNC)
+    # Try MEXC V3 (Public, extremely fast coverage for LUNC/USTC/Altcoins)
     try:
-        url = f"https://www.mexc.com/open/api/v2/market/ticker?symbol={symbol}_USDT"
+        url = f"https://api.mexc.com/api/v3/ticker/price?symbol={trade_pair}"
         r = requests.get(url, timeout=5)
         if r.status_code == 200:
             data = r.json()
-            if data.get('data') and len(data['data']) > 0:
-                price = float(data['data'][0]['last'])
+            if 'price' in data:
+                price = float(data['price'])
                 logger.info(f"[PRICE ENGINE] MEXC Realtime: {symbol} @ ${price}")
                 return price
-    except:
-        pass
+        else:
+            logger.debug(f"[PRICE ENGINE] MEXC V3 Failed ({r.status_code}) for {trade_pair}")
+    except Exception as e:
+        logger.debug(f"[PRICE ENGINE] MEXC V3 Error: {e}")
 
-    # Try Binance for Top 20
+    # Try Binance V3 (Standard for Top 20)
     try:
-        url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}USDT"
+        url = f"https://api.binance.com/api/v3/ticker/price?symbol={trade_pair}"
         r = requests.get(url, timeout=5)
         if r.status_code == 200:
             price = float(r.json()['price'])
             logger.info(f"[PRICE ENGINE] Binance Realtime: {symbol} @ ${price}")
             return price
-    except:
-        pass
+        else:
+            logger.debug(f"[PRICE ENGINE] Binance V3 Failed ({r.status_code}) for {trade_pair}")
+    except Exception as e:
+        logger.debug(f"[PRICE ENGINE] Binance V3 Error: {e}")
 
     return None
 
