@@ -79,7 +79,7 @@ def auto_post_loop(bot_token: str):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     time.sleep(5)
-    logger.info("=== AUTO-POST ENGINE V13 STARTED === CONTINUOUS SIGNAL MODE ===")
+    logger.info("=== AUTO-POST ENGINE V15 STARTED === PINPOINT ACCURACY MODE ===")
 
     hack_counter = 0
     global last_digest_time
