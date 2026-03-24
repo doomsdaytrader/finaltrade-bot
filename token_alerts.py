@@ -25,7 +25,39 @@ market_cache = [
     {"id": "terrausd", "name": "TerraClassicUSD", "symbol": "ustc", "current_price": 0.02, "price_change_percentage_24h": -0.5, "total_volume": 10000000, "market_cap": 200000000, "image": "https://assets.coingecko.com/coins/images/12167/large/ustc.png"}
 ]
 last_fetch_time = 0
-CACHE_DURATION = 60 # 1 minute cooldown for API calls to ensure high accuracy
+CACHE_DURATION = 300 # Back to 5m for list discovery (we will use realtime fetch for actual prices)
+
+def get_accurate_price(symbol):
+    """
+    Fetches pinpoint accurate price from MEXC or Binance for a specific symbol.
+    """
+    symbol = symbol.upper()
+    
+    # Try MEXC first (very fast, covers almost all tokens including LUNC)
+    try:
+        url = f"https://www.mexc.com/open/api/v2/market/ticker?symbol={symbol}_USDT"
+        r = requests.get(url, timeout=5)
+        if r.status_code == 200:
+            data = r.json()
+            if data.get('data') and len(data['data']) > 0:
+                price = float(data['data'][0]['last'])
+                logger.info(f"[PRICE ENGINE] MEXC Realtime: {symbol} @ ${price}")
+                return price
+    except:
+        pass
+
+    # Try Binance for Top 20
+    try:
+        url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}USDT"
+        r = requests.get(url, timeout=5)
+        if r.status_code == 200:
+            price = float(r.json()['price'])
+            logger.info(f"[PRICE ENGINE] Binance Realtime: {symbol} @ ${price}")
+            return price
+    except:
+        pass
+
+    return None
 
 # Affiliate categorization mapper
 def get_exchange_for_coin(symbol, category):
@@ -158,10 +190,17 @@ async def auto_post_hottest_tokens(bot: Bot):
             category = "⚖️ RANGE BOUND SCALP ZONES"
             trade_dir = "SCALP ⚪"
 
-        # Extract data
         name = target_coin['name']
         symbol = target_coin['symbol'].upper()
-        price = target_coin['current_price']
+        
+        # PINPOINT ACCURACY: Fetch real-time price to override cached data
+        accurate_price = get_accurate_price(symbol)
+        if accurate_price:
+            price = accurate_price
+        else:
+            price = target_coin['current_price']
+            logger.warning(f"[PRICE ENGINE] Fallback to cached price for {symbol}: ${price}")
+
         change_24h = target_coin['price_change_percentage_24h']
         change_1h = target_coin.get('price_change_percentage_1h_in_currency', 0) or 0
         volume = target_coin['total_volume']
