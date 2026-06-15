@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import random
 from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.constants import ParseMode
@@ -25,7 +25,7 @@ HACKS = [
     },
     {
         "title": "Bleach for Water Purification",
-        "content": "If you cannot boil water, purify it using regular, unscented household bleach (sodium hypochlorite, 5-9% concentration).\n\nUse 8 drops (1/8 teaspoon) per 1 gallon of clear water. If clouded, double to 16 drops. Stir and let sit for exactly 30 minutes. It should have a faint chlorine smell—if not, repeat."
+        "content": "If you cannot boil water, purify it using regular, unscented household bleach (sodium hypochlorite, 5-9% concentration).\n\nUse 8 drops (1/8 teaspoon) per 1 gallon of clear water. If clouded, double to 16 drops. Stir and let sit for exactly 30 minutes. It should have a faint chlorine smellâ€”if not, repeat."
     },
     {
         "title": "DIY Emergency Heater (Crisco + String)",
@@ -71,12 +71,12 @@ async def auto_post_survival_hack(bot: Bot):
         hack = random.choice(HACKS)
         
         msg = (
-            f"🛡️ <b>SURVIVAL INTEL / TACTICAL HACK</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"🧠 <b>{hack['title']}</b>\n\n"
+            f"ðŸ›¡ï¸ <b>SURVIVAL INTEL / TACTICAL HACK</b>\n"
+            f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n\n"
+            f"ðŸ§  <b>{hack['title']}</b>\n\n"
             f"{hack['content']}\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"✝️ <i>The Final Trade — Be Prepared.</i>"
+            f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
+            f"âœï¸ <i>AYEWAKEN FUTURES â€” Be Prepared.</i>"
         )
         
         topic_id = int(TOPIC_SURVIVAL) if TOPIC_SURVIVAL and TOPIC_SURVIVAL != "0" else None
@@ -89,3 +89,4 @@ async def auto_post_survival_hack(bot: Bot):
         )
     except Exception as e:
         logger.error(f"Survival hack auto-post error: {e}")
+
