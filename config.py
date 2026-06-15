@@ -1,14 +1,18 @@
 import os
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-GROUP_ID = os.environ.get("GROUP_ID", "")
+GROUP_ID = os.environ.get("GROUP_ID", "-100525392253")
 
 # Affiliate / Referral Links
+BITBASE_REF = "TXNN7S"
 WEEX_REF = "t4fl"
-BYDFI_REF = "Bz6sDC2e&f=Thefinaltrade"
-BITUNIX_REF = "cujH"
-BTCC_REF = "Z0TOZT&utm_source=kol"
+BYDFI_REF = "Bz6sDCCX&f=LUNC"
+BYBIT_REF = "95997"
+BITUNIX_REF = "pumpcity"
 KCEX_REF = "ZAWFPO"
+VOOX_REF = "QVHTWAEV"
+BITMART_REF = "ctYdrc"
+ORANGEX_REF = "f9vatgs2"
 
 # Wallets
 TRC20_WALLET = os.environ.get("TRC20_WALLET", "")
@@ -92,12 +96,13 @@ NEWS_FEEDS = {
 
 # Category display config with emojis for rich visual posts
 CATEGORY_CONFIG = {
-    "crypto":   {"emoji": "📰", "label": "CRYPTO INTEL",           "color": "🟠", "hashtag": "#crypto #bitcoin"},
-    "finance":  {"emoji": "💹", "label": "FINANCIAL MARKETS",      "color": "💵", "hashtag": "#finance #markets"},
-    "world":    {"emoji": "🌍", "label": "WORLD NEWS",             "color": "🔵", "hashtag": "#world #geopolitics"},
-    "survival": {"emoji": "🛡️", "label": "SURVIVAL & DISASTER",    "color": "🔴", "hashtag": "#survival #prepping"},
-    "conflict": {"emoji": "⚔️", "label": "WAR & CONFLICT",         "color": "🟤", "hashtag": "#conflict #defense"},
-    "science":  {"emoji": "🔬", "label": "SCIENCE & SPACE",        "color": "🟣", "hashtag": "#nasa #space"},
-    "energy":   {"emoji": "⛽", "label": "ENERGY & RESOURCES",     "color": "🟡", "hashtag": "#energy #oil"},
-    "health":   {"emoji": "🏥", "label": "HEALTH & PANDEMIC",      "color": "🟢", "hashtag": "#health #pandemic"},
+    "crypto":   {"emoji": "ðŸ“°", "label": "CRYPTO INTEL",           "color": "ðŸŸ ", "hashtag": "#crypto #bitcoin"},
+    "finance":  {"emoji": "ðŸ’¹", "label": "FINANCIAL MARKETS",      "color": "ðŸ’µ", "hashtag": "#finance #markets"},
+    "world":    {"emoji": "ðŸŒ", "label": "WORLD NEWS",             "color": "ðŸ”µ", "hashtag": "#world #geopolitics"},
+    "survival": {"emoji": "ðŸ›¡ï¸", "label": "SURVIVAL & DISASTER",    "color": "ðŸ”´", "hashtag": "#survival #prepping"},
+    "conflict": {"emoji": "âš”ï¸", "label": "WAR & CONFLICT",         "color": "ðŸŸ¤", "hashtag": "#conflict #defense"},
+    "science":  {"emoji": "ðŸ”¬", "label": "SCIENCE & SPACE",        "color": "ðŸŸ£", "hashtag": "#nasa #space"},
+    "energy":   {"emoji": "â›½", "label": "ENERGY & RESOURCES",     "color": "ðŸŸ¡", "hashtag": "#energy #oil"},
+    "health":   {"emoji": "ðŸ¥", "label": "HEALTH & PANDEMIC",      "color": "ðŸŸ¢", "hashtag": "#health #pandemic"},
 }
+
