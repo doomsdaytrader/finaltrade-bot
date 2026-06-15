@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import threading
 import asyncio
 import time
@@ -61,7 +61,7 @@ class HealthHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(b'{"status":"alive","bot":"TheFinalTradeBot"}')
+            self.wfile.write(b'{"status":"alive","bot":"AyewakenFuturesBot"}')
     def log_message(self, format, *args):
         pass
 
@@ -71,7 +71,7 @@ def run_health_server():
 
 
 # ============================================================
-# AUTO-POST ENGINE — With thumbnails & rich formatting
+# AUTO-POST ENGINE â€” With thumbnails & rich formatting
 # ============================================================
 
 def auto_post_loop(bot_token: str):
@@ -147,7 +147,7 @@ def auto_post_loop(bot_token: str):
                     loop.run_until_complete(auto_post_2hr_digest(bot))
                     last_digest_time = current_time
                 
-                logger.info("=== FULL CYCLE COMPLETE — Restarting in 10 seconds ===")
+                logger.info("=== FULL CYCLE COMPLETE â€” Restarting in 10 seconds ===")
 
         except Exception as e:
             logger.error(f"Auto-post cycle error: {e}")
@@ -159,7 +159,7 @@ def auto_post_loop(bot_token: str):
 async def auto_post_category(bot: Bot, category: str, feeds: list):
     """Auto-post RSS articles with thumbnails to the group."""
     global posted_urls, recent_news_digest
-    config = CATEGORY_CONFIG.get(category, {"emoji": "📰", "label": category.upper(), "color": "⚪", "hashtag": ""})
+    config = CATEGORY_CONFIG.get(category, {"emoji": "ðŸ“°", "label": category.upper(), "color": "âšª", "hashtag": ""})
 
     # Route to correct topic
     topic_map = {
@@ -192,23 +192,23 @@ async def auto_post_category(bot: Bot, category: str, feeds: list):
                     commodities = ['gold', 'silver', 'oil', 'platinum', 'palladium', 'precious metal', 'rare earth']
                     if any(kw in text_to_check for kw in commodities):
                         from config import BYDFI_REF
-                        commodity_link = f"\n\n⛏️ <b>Trade Commodities on BYDFi:</b> <a href='https://partner.bydfi.com/register?vipCode={BYDFI_REF}&f=Thefinaltrade'>Click Here</a>"
+                        commodity_link = f"\n\nâ›ï¸ <b>Trade Commodities on BYDFi:</b> <a href='https://partner.bydfi.com/register?vipCode={BYDFI_REF}&f=AyewakenFutures'>Click Here</a>"
 
                     caption = (
                         f"{config['emoji']} <b>{config['label']} ALERT</b>\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        f"📌 <b>{entry.title}</b>\n\n"
+                        f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n\n"
+                        f"ðŸ“Œ <b>{entry.title}</b>\n\n"
                     )
                     if summary:
                         caption += f"{summary}\n\n"
                     caption += (
-                        f"🔗 <a href='{entry.link}'>Read Full Report</a>{commodity_link}\n\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        f"✝️ <i>The Final Trade</i> {config['hashtag']}"
+                        f"ðŸ”— <a href='{entry.link}'>Read Full Report</a>{commodity_link}\n\n"
+                        f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
+                        f"âœï¸ <i>AYEWAKEN FUTURES</i> {config['hashtag']}"
                     )
 
                     keyboard = InlineKeyboardMarkup([
-                        [InlineKeyboardButton("🌐 Read Article", url=entry.link)],
+                        [InlineKeyboardButton("ðŸŒ Read Article", url=entry.link)],
                     ])
 
                     # Try sending with thumbnail photo
@@ -251,8 +251,8 @@ async def auto_post_2hr_digest(bot: Bot):
 
     try:
         lines = [
-            "🌐 <b>THE FINAL TRADE — 2-HOUR GLOBAL DIGEST</b>",
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "ðŸŒ <b>AYEWAKEN FUTURES â€” 2-HOUR GLOBAL DIGEST</b>",
+            "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
         ]
 
         # Pick up to 10 top headlines randomly to show recent events
@@ -263,8 +263,8 @@ async def auto_post_2hr_digest(bot: Bot):
             lines.append("")
 
         lines.extend([
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-            "✝️ <i>The Final Trade — All glory to God.</i>"
+            "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”",
+            "âœï¸ <i>AYEWAKEN FUTURES â€” All glory to God.</i>"
         ])
         
         topic_id = int(TOPIC_NEWS) if TOPIC_NEWS and TOPIC_NEWS != "0" else None
@@ -292,22 +292,22 @@ async def auto_post_market_pulse(bot: Bot):
         data = requests.get(url, timeout=10).json()
 
         display = [
-            ("bitcoin","BTC","🟠"), ("ethereum","ETH","🔷"), ("solana","SOL","🟣"),
-            ("binancecoin","BNB","🟡"), ("terra-luna","LUNC","🔵"), ("terrausd","USTC","🟢"),
+            ("bitcoin","BTC","ðŸŸ "), ("ethereum","ETH","ðŸ”·"), ("solana","SOL","ðŸŸ£"),
+            ("binancecoin","BNB","ðŸŸ¡"), ("terra-luna","LUNC","ðŸ”µ"), ("terrausd","USTC","ðŸŸ¢"),
         ]
 
         fg_text = ""
         try:
             fg = requests.get(FEAR_GREED_API, timeout=5).json()['data'][0]
             val = int(fg['value'])
-            fg_emoji = "😱" if val < 25 else "😰" if val < 50 else "😐" if val < 75 else "🤑"
+            fg_emoji = "ðŸ˜±" if val < 25 else "ðŸ˜°" if val < 50 else "ðŸ˜" if val < 75 else "ðŸ¤‘"
             fg_text = f"{fg_emoji} <b>Fear & Greed:</b> {val}/100 ({fg['value_classification']})\n"
         except:
             pass
 
         lines = [
-            "📊 <b>MARKET PULSE — AUTO SIGNAL</b>",
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "ðŸ“Š <b>MARKET PULSE â€” AUTO SIGNAL</b>",
+            "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”",
             fg_text
         ]
 
@@ -315,13 +315,13 @@ async def auto_post_market_pulse(bot: Bot):
             if cg_id in data:
                 price = data[cg_id]["usd"]
                 change = data[cg_id].get("usd_24h_change", 0) or 0
-                arrow = "🟢▲" if change > 0 else "🔴▼" if change < 0 else "⚪▬"
+                arrow = "ðŸŸ¢â–²" if change > 0 else "ðŸ”´â–¼" if change < 0 else "âšªâ–¬"
                 p_str = f"${price:,.2f}" if price >= 1 else f"${price:,.6f}"
                 lines.append(f"{emoji} <b>{symbol}</b>  {p_str}  {arrow}{change:+.1f}%")
 
         exchanges = [
             ("WEEX", f"https://www.weex.com/en/spot/BTC_USDT?vipCode={WEEX_REF}"),
-            ("BYDFi", f"https://partner.bydfi.com/register?vipCode={BYDFI_REF}&f=Thefinaltrade"),
+            ("BYDFi", f"https://partner.bydfi.com/register?vipCode={BYDFI_REF}&f=AyewakenFutures"),
             ("Bitunix", f"https://www.bitunix.com/register?vipCode={BITUNIX_REF}"),
             ("BTCC", f"https://www.btcc.com/en-US/register?inviteCode={BTCC_REF}"),
             ("KCEX", f"https://www.kcex.com/register?inviteCode={KCEX_REF}")
@@ -330,10 +330,10 @@ async def auto_post_market_pulse(bot: Bot):
 
         lines.extend([
             "",
-            f"📈 <a href='{affiliate_link}'>Trade on {exchange_name}</a>",
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-            "✝️ <i>The Final Trade — All glory to God</i>",
-            "#TheFinalTrade #MarketPulse #crypto"
+            f"ðŸ“ˆ <a href='{affiliate_link}'>Trade on {exchange_name}</a>",
+            "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”",
+            "âœï¸ <i>AYEWAKEN FUTURES â€” All glory to God</i>",
+            "#AyewakenFutures #MarketPulse #crypto"
         ])
 
         topic_id = int(TOPIC_MARKET) if TOPIC_MARKET and TOPIC_MARKET != "0" else None
@@ -363,7 +363,7 @@ if __name__ == '__main__':
         threading.Thread(target=auto_post_loop, args=(BOT_TOKEN,), daemon=True).start()
         print(f"Auto-posting V3 armed for group {GROUP_ID}")
     else:
-        print("No GROUP_ID — auto-posting disabled.")
+        print("No GROUP_ID â€” auto-posting disabled.")
 
     # Build app
     app = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -389,5 +389,6 @@ if __name__ == '__main__':
     # Inline buttons
     app.add_handler(CallbackQueryHandler(button_callback))
 
-    print("✝️ The Final Trade Bot V3 — All glory to God! LIVE.")
+    print("âœï¸ AYEWAKEN FUTURES Bot V3 â€” All glory to God! LIVE.")
     app.run_polling()
+
