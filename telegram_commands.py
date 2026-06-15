@@ -1,4 +1,4 @@
-import re
+﻿import re
 import requests
 import feedparser
 from statistics import mean
@@ -14,7 +14,7 @@ from config import (
 
 
 # ============================================================
-# THUMBNAIL EXTRACTOR — Pulls images from RSS entries
+# THUMBNAIL EXTRACTOR â€” Pulls images from RSS entries
 # ============================================================
 def extract_thumbnail(entry):
     """Extract the best available thumbnail from an RSS feed entry."""
@@ -103,37 +103,37 @@ def generate_ai_signal(data):
     rsi = estimate_rsi(sparkline[-24:]) if len(sparkline) >= 14 else 50.0
 
     if rsi > 70:
-        mood = "🔴 OVERBOUGHT — Pullback zone"
-        action = "⚠️ Take profits / tighten stops"
-        bar = "🔴🔴🔴🔴🔴🔴🔴⚪⚪⚪"
+        mood = "ðŸ”´ OVERBOUGHT â€” Pullback zone"
+        action = "âš ï¸ Take profits / tighten stops"
+        bar = "ðŸ”´ðŸ”´ðŸ”´ðŸ”´ðŸ”´ðŸ”´ðŸ”´âšªâšªâšª"
     elif rsi > 55:
-        mood = "🟡 BULLISH — Momentum building"
-        action = "📈 Trail stops, ride the wave"
-        bar = "🟡🟡🟡🟡🟡🟡⚪⚪⚪⚪"
+        mood = "ðŸŸ¡ BULLISH â€” Momentum building"
+        action = "ðŸ“ˆ Trail stops, ride the wave"
+        bar = "ðŸŸ¡ðŸŸ¡ðŸŸ¡ðŸŸ¡ðŸŸ¡ðŸŸ¡âšªâšªâšªâšª"
     elif rsi > 45:
-        mood = "⚪ NEUTRAL — Consolidation"
-        action = "⏳ Wait for breakout confirmation"
-        bar = "⚪⚪⚪⚪⚪⚪⚪⚪⚪⚪"
+        mood = "âšª NEUTRAL â€” Consolidation"
+        action = "â³ Wait for breakout confirmation"
+        bar = "âšªâšªâšªâšªâšªâšªâšªâšªâšªâšª"
     elif rsi > 30:
-        mood = "🟢 DIPPING — Accumulation zone"
-        action = "💰 Dollar-cost average in"
-        bar = "🟢🟢🟢🟢⚪⚪⚪⚪⚪⚪"
+        mood = "ðŸŸ¢ DIPPING â€” Accumulation zone"
+        action = "ðŸ’° Dollar-cost average in"
+        bar = "ðŸŸ¢ðŸŸ¢ðŸŸ¢ðŸŸ¢âšªâšªâšªâšªâšªâšª"
     else:
-        mood = "💎 OVERSOLD — Whale entry zone"
-        action = "🐋 Strong buy signal for holders"
-        bar = "💎💎💎💎💎💎💎💎⚪⚪"
+        mood = "ðŸ’Ž OVERSOLD â€” Whale entry zone"
+        action = "ðŸ‹ Strong buy signal for holders"
+        bar = "ðŸ’ŽðŸ’ŽðŸ’ŽðŸ’ŽðŸ’ŽðŸ’ŽðŸ’ŽðŸ’Žâšªâšª"
 
-    trend = "✅ Bullish continuation" if change > 0 else "⚠️ Bearish pressure"
-    vol_label = "📊 High volatility — scalp opportunities" if abs(change) > 5 else "📊 Low volatility — ranging"
+    trend = "âœ… Bullish continuation" if change > 0 else "âš ï¸ Bearish pressure"
+    vol_label = "ðŸ“Š High volatility â€” scalp opportunities" if abs(change) > 5 else "ðŸ“Š Low volatility â€” ranging"
 
     signal = (
-        f"🧠 <b>AI SIGNAL ANALYSIS</b>\n"
-        f"┣ RSI: <b>{rsi}</b> — {mood}\n"
-        f"┣ {bar}\n"
-        f"┣ Trend: {trend} ({change:+.2f}%)\n"
-        f"┣ {vol_label}\n"
-        f"┣ Action: {action}\n"
-        f"┗ ⚡ Leverage: 10x-20x short bursts"
+        f"ðŸ§  <b>AI SIGNAL ANALYSIS</b>\n"
+        f"â”£ RSI: <b>{rsi}</b> â€” {mood}\n"
+        f"â”£ {bar}\n"
+        f"â”£ Trend: {trend} ({change:+.2f}%)\n"
+        f"â”£ {vol_label}\n"
+        f"â”£ Action: {action}\n"
+        f"â”— âš¡ Leverage: 10x-20x short bursts"
     )
     return signal, rsi
 
@@ -149,60 +149,60 @@ def fetch_coin_detail(coin_id: str):
 
 
 # ============================================================
-# /START — Interactive Menu
+# /START â€” Interactive Menu
 # ============================================================
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("🔵 LUNC Signal", callback_data="signal_terra-luna"),
-            InlineKeyboardButton("🟢 USTC Signal", callback_data="signal_terrausd"),
+            InlineKeyboardButton("ðŸ”µ LUNC Signal", callback_data="signal_terra-luna"),
+            InlineKeyboardButton("ðŸŸ¢ USTC Signal", callback_data="signal_terrausd"),
         ],
         [
-            InlineKeyboardButton("🟠 BTC Forecast", callback_data="signal_bitcoin"),
-            InlineKeyboardButton("🔷 ETH Forecast", callback_data="signal_ethereum"),
+            InlineKeyboardButton("ðŸŸ  BTC Forecast", callback_data="signal_bitcoin"),
+            InlineKeyboardButton("ðŸ”· ETH Forecast", callback_data="signal_ethereum"),
         ],
         [
-            InlineKeyboardButton("📊 Markets", callback_data="cmd_markets"),
-            InlineKeyboardButton("😱 Fear & Greed", callback_data="cmd_feargreed"),
+            InlineKeyboardButton("ðŸ“Š Markets", callback_data="cmd_markets"),
+            InlineKeyboardButton("ðŸ˜± Fear & Greed", callback_data="cmd_feargreed"),
         ],
         [
-            InlineKeyboardButton("📰 Crypto News", callback_data="cmd_crypto"),
-            InlineKeyboardButton("💹 Finance", callback_data="cmd_finance"),
+            InlineKeyboardButton("ðŸ“° Crypto News", callback_data="cmd_crypto"),
+            InlineKeyboardButton("ðŸ’¹ Finance", callback_data="cmd_finance"),
         ],
         [
-            InlineKeyboardButton("🌍 World News", callback_data="cmd_world"),
-            InlineKeyboardButton("⚔️ War & Conflict", callback_data="cmd_conflict"),
+            InlineKeyboardButton("ðŸŒ World News", callback_data="cmd_world"),
+            InlineKeyboardButton("âš”ï¸ War & Conflict", callback_data="cmd_conflict"),
         ],
         [
-            InlineKeyboardButton("🛡️ Survival", callback_data="cmd_survival"),
-            InlineKeyboardButton("🏥 Health", callback_data="cmd_health"),
+            InlineKeyboardButton("ðŸ›¡ï¸ Survival", callback_data="cmd_survival"),
+            InlineKeyboardButton("ðŸ¥ Health", callback_data="cmd_health"),
         ],
         [
-            InlineKeyboardButton("🔬 NASA & Space", callback_data="cmd_science"),
-            InlineKeyboardButton("⛽ Energy Crisis", callback_data="cmd_energy"),
+            InlineKeyboardButton("ðŸ”¬ NASA & Space", callback_data="cmd_science"),
+            InlineKeyboardButton("â›½ Energy Crisis", callback_data="cmd_energy"),
         ],
         [
-            InlineKeyboardButton("🔍 Token Scanner", callback_data="cmd_scanner"),
-            InlineKeyboardButton("🖥️ Terminal", callback_data="cmd_dashboard"),
+            InlineKeyboardButton("ðŸ” Token Scanner", callback_data="cmd_scanner"),
+            InlineKeyboardButton("ðŸ–¥ï¸ Terminal", callback_data="cmd_dashboard"),
         ],
-        [InlineKeyboardButton("⚠️ Disclaimer", callback_data="cmd_disclaimer")],
+        [InlineKeyboardButton("âš ï¸ Disclaimer", callback_data="cmd_disclaimer")],
     ])
 
     msg = (
-        "✝️ <b>WELCOME TO THE FINAL TRADE</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "🙏 <i>All glory goes to God.</i>\n\n"
-        "🧠 <b>AI-Powered Intelligence Hub:</b>\n\n"
-        "📊 Crypto — AI Signals, RSI, Leverage\n"
-        "💹 Finance — Markets, Fear & Greed\n"
-        "🌍 World — BBC, NYT, Reuters, Al Jazeera\n"
-        "⚔️ Conflict — War zones, defense intel\n"
-        "🛡️ Survival — NOAA, USGS, WHO, FEMA\n"
-        "🏥 Health — WHO, pandemic tracking\n"
-        "🔬 Science — NASA, Space.com\n"
-        "⛽ Energy — Oil, resource crisis\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "⚡ <b>30+ live feeds. 24/7 auto-alerts.</b>\n"
+        "âœï¸ <b>WELCOME TO AYEWAKEN FUTURES</b>\n"
+        "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
+        "ðŸ™ <i>All glory goes to God.</i>\n\n"
+        "ðŸ§  <b>AI-Powered Intelligence Hub:</b>\n\n"
+        "ðŸ“Š Crypto â€” AI Signals, RSI, Leverage\n"
+        "ðŸ’¹ Finance â€” Markets, Fear & Greed\n"
+        "ðŸŒ World â€” BBC, NYT, Reuters, Al Jazeera\n"
+        "âš”ï¸ Conflict â€” War zones, defense intel\n"
+        "ðŸ›¡ï¸ Survival â€” NOAA, USGS, WHO, FEMA\n"
+        "ðŸ¥ Health â€” WHO, pandemic tracking\n"
+        "ðŸ”¬ Science â€” NASA, Space.com\n"
+        "â›½ Energy â€” Oil, resource crisis\n\n"
+        "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
+        "âš¡ <b>30+ live feeds. 24/7 auto-alerts.</b>\n"
         "Tap any button below to begin."
     )
     await update.message.reply_text(msg, parse_mode=ParseMode.HTML, reply_markup=keyboard)
@@ -229,7 +229,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "cmd_scanner":
         await context.bot.send_message(
             query.message.chat.id,
-            "🔍 <b>Token Scanner</b>\n\nScan any coin with:\n<code>/token sol</code>\n<code>/token doge</code>\n<code>/token xrp</code>\n<code>/token avax</code>",
+            "ðŸ” <b>Token Scanner</b>\n\nScan any coin with:\n<code>/token sol</code>\n<code>/token doge</code>\n<code>/token xrp</code>\n<code>/token avax</code>",
             parse_mode=ParseMode.HTML
         )
     elif data == "cmd_dashboard":
@@ -237,8 +237,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "cmd_disclaimer":
         await context.bot.send_message(
             query.message.chat.id,
-            "⚠️ <b>Disclaimer</b>\n\nFor educational and informational purposes only. "
-            "Not financial advice. Trade at your own risk.\n\n✝️ <i>All glory to God.</i>",
+            "âš ï¸ <b>Disclaimer</b>\n\nFor educational and informational purposes only. "
+            "Not financial advice. Trade at your own risk.\n\nâœï¸ <i>All glory to God.</i>",
             parse_mode=ParseMode.HTML
         )
     elif data == "cmd_back":
@@ -250,7 +250,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ============================================================
-# FULL SIGNAL — Logo + RSI + AI + Market Data + WEEX
+# FULL SIGNAL â€” Logo + RSI + AI + Market Data + WEEX
 # ============================================================
 async def _send_full_signal(chat_id, coin_id, context):
     try:
@@ -277,37 +277,37 @@ async def _send_full_signal(chat_id, coin_id, context):
         ath_str = f"${ath:,.2f}" if ath >= 1 else f"${ath:,.6f}"
         circ_str = f"{circulating/1e9:,.2f}B" if circulating >= 1e9 else f"{circulating/1e6:,.1f}M"
 
-        def arrow(v): return "🟢▲" if v > 0 else "🔴▼" if v < 0 else "⚪▬"
+        def arrow(v): return "ðŸŸ¢â–²" if v > 0 else "ðŸ”´â–¼" if v < 0 else "âšªâ–¬"
 
         from token_alerts import get_exchange_for_coin
         exchange_name, affiliate_link = get_exchange_for_coin(symbol, "MANUAL SIGNAL")
 
         caption = (
-            f"🚨 <b>{name} ({symbol}) — FULL SIGNAL</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"💰 <b>Price:</b> {p_str}\n"
+            f"ðŸš¨ <b>{name} ({symbol}) â€” FULL SIGNAL</b>\n"
+            f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n\n"
+            f"ðŸ’° <b>Price:</b> {p_str}\n"
             f"{arrow(change_1h)} <b>1h:</b> {change_1h:+.2f}%\n"
             f"{arrow(change_24h)} <b>24h:</b> {change_24h:+.2f}%\n"
             f"{arrow(change_7d)} <b>7d:</b> {change_7d:+.2f}%\n"
             f"{arrow(change_30d)} <b>30d:</b> {change_30d:+.2f}%\n\n"
-            f"📊 <b>Market Cap:</b> {mc_str}\n"
-            f"📈 <b>24h Volume:</b> {vol_str}\n"
-            f"🔄 <b>Circulating:</b> {circ_str} {symbol}\n"
-            f"🏆 <b>ATH:</b> {ath_str} ({ath_change:+.1f}% from ATH)\n\n"
+            f"ðŸ“Š <b>Market Cap:</b> {mc_str}\n"
+            f"ðŸ“ˆ <b>24h Volume:</b> {vol_str}\n"
+            f"ðŸ”„ <b>Circulating:</b> {circ_str} {symbol}\n"
+            f"ðŸ† <b>ATH:</b> {ath_str} ({ath_change:+.1f}% from ATH)\n\n"
             f"{ai_signal}\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"✝️ <i>The Final Trade — All glory to God</i>"
+            f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
+            f"âœï¸ <i>AYEWAKEN FUTURES â€” All glory to God</i>"
         )
 
         buttons = [
-            [InlineKeyboardButton(f"📈 Trade {symbol} on {exchange_name}", url=affiliate_link)]
+            [InlineKeyboardButton(f"ðŸ“ˆ Trade {symbol} on {exchange_name}", url=affiliate_link)]
         ]
         
         # Inject Epic Mini-App Button for Terra classic community
         if symbol in ["LUNC", "USTC"]:
-            buttons.append([InlineKeyboardButton("🔥 LUNC TO $0.37 MINI-APP", url="https://finaltrade-dashboard-91me6lozz-irayecrypto-1565s-projects.vercel.app/lunc/index.html")])
+            buttons.append([InlineKeyboardButton("ðŸ”¥ LUNC TO $0.37 MINI-APP", url="https://finaltrade-dashboard-91me6lozz-irayecrypto-1565s-projects.vercel.app/lunc/index.html")])
         
-        buttons.append([InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_back")])
+        buttons.append([InlineKeyboardButton("ðŸ”™ Main Menu", callback_data="cmd_back")])
         
         keyboard = InlineKeyboardMarkup(buttons)
 
@@ -316,7 +316,7 @@ async def _send_full_signal(chat_id, coin_id, context):
         else:
             await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode=ParseMode.HTML, reply_markup=keyboard)
     except Exception as e:
-        await context.bot.send_message(chat_id=chat_id, text=f"❌ Error: <i>{str(e)[:200]}</i>", parse_mode=ParseMode.HTML)
+        await context.bot.send_message(chat_id=chat_id, text=f"âŒ Error: <i>{str(e)[:200]}</i>", parse_mode=ParseMode.HTML)
 
 
 # ============================================================
@@ -333,10 +333,10 @@ ALIASES = {
 async def price_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         msg = (
-            "📊 <b>Usage:</b> <code>/price bitcoin</code>\n\n"
-            "🟠 BTC  🔷 ETH  🟣 SOL  🟡 BNB\n"
-            "🔵 LUNC  🟢 USTC  ⚪ XRP  🟤 DOGE\n"
-            "♦ ADA  🔗 LINK  🟣 DOT  ❄️ AVAX\n\n"
+            "ðŸ“Š <b>Usage:</b> <code>/price bitcoin</code>\n\n"
+            "ðŸŸ  BTC  ðŸ”· ETH  ðŸŸ£ SOL  ðŸŸ¡ BNB\n"
+            "ðŸ”µ LUNC  ðŸŸ¢ USTC  âšª XRP  ðŸŸ¤ DOGE\n"
+            "â™¦ ADA  ðŸ”— LINK  ðŸŸ£ DOT  â„ï¸ AVAX\n\n"
             "<i>Or use /token for full AI signal analysis</i>"
         )
         await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
@@ -346,7 +346,7 @@ async def price_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def token_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("🔍 <b>Token Scanner</b>\n\nUsage: <code>/token sol</code>", parse_mode=ParseMode.HTML)
+        await update.message.reply_text("ðŸ” <b>Token Scanner</b>\n\nUsage: <code>/token sol</code>", parse_mode=ParseMode.HTML)
         return
     coin_id = ALIASES.get(context.args[0].lower(), context.args[0].lower())
     await _send_full_signal(update.message.chat.id, coin_id, context)
@@ -355,17 +355,17 @@ async def hot_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Manually triggers the Hottest Token scanner and dumps a new Setup."""
     from token_alerts import auto_post_hottest_tokens
     
-    msg = await update.message.reply_text("📡 <i>Scanning highest volume breakout targets...</i>", parse_mode=ParseMode.HTML)
+    msg = await update.message.reply_text("ðŸ“¡ <i>Scanning highest volume breakout targets...</i>", parse_mode=ParseMode.HTML)
     try:
         # Override bot so it posts back to the same chat if we are testing outside supergroup
         await auto_post_hottest_tokens(context.bot)
         await msg.delete()
     except Exception as e:
-        await msg.edit_text(f"❌ Error: {e}")
+        await msg.edit_text(f"âŒ Error: {e}")
 
 
 # ============================================================
-# /MARKETS — Full overview + Fear & Greed
+# /MARKETS â€” Full overview + Fear & Greed
 # ============================================================
 async def markets_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _send_markets(update.message.chat.id, context)
@@ -377,25 +377,25 @@ async def _send_markets(chat_id, context):
         data = requests.get(url, timeout=10).json()
 
         display = [
-            ("bitcoin","BTC","🟠"), ("ethereum","ETH","🔷"), ("solana","SOL","🟣"),
-            ("binancecoin","BNB","🟡"), ("terra-luna","LUNC","🔵"), ("terrausd","USTC","🟢"),
-            ("ripple","XRP","⚪"), ("dogecoin","DOGE","🟤"), ("cardano","ADA","♦"),
-            ("polkadot","DOT","🟣"),
+            ("bitcoin","BTC","ðŸŸ "), ("ethereum","ETH","ðŸ”·"), ("solana","SOL","ðŸŸ£"),
+            ("binancecoin","BNB","ðŸŸ¡"), ("terra-luna","LUNC","ðŸ”µ"), ("terrausd","USTC","ðŸŸ¢"),
+            ("ripple","XRP","âšª"), ("dogecoin","DOGE","ðŸŸ¤"), ("cardano","ADA","â™¦"),
+            ("polkadot","DOT","ðŸŸ£"),
         ]
 
         fg_text = ""
         try:
             fg = requests.get(FEAR_GREED_API, timeout=5).json()['data'][0]
             val = int(fg['value'])
-            fg_emoji = "😱" if val < 25 else "😰" if val < 50 else "😐" if val < 75 else "🤑"
-            fg_bar = "🔴" * (val // 10) + "⚪" * (10 - val // 10)
+            fg_emoji = "ðŸ˜±" if val < 25 else "ðŸ˜°" if val < 50 else "ðŸ˜" if val < 75 else "ðŸ¤‘"
+            fg_bar = "ðŸ”´" * (val // 10) + "âšª" * (10 - val // 10)
             fg_text = f"{fg_emoji} <b>Fear & Greed:</b> {val}/100 ({fg['value_classification']})\n{fg_bar}\n"
         except:
             pass
 
         lines = [
-            "🌐 <b>MARKET COMMAND CENTER</b>",
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "ðŸŒ <b>MARKET COMMAND CENTER</b>",
+            "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”",
             fg_text
         ]
 
@@ -404,7 +404,7 @@ async def _send_markets(chat_id, context):
                 price = data[cg_id]["usd"]
                 change = data[cg_id].get("usd_24h_change", 0) or 0
                 mc = data[cg_id].get("usd_market_cap", 0) or 0
-                arrow = "🟢▲" if change > 0 else "🔴▼" if change < 0 else "⚪▬"
+                arrow = "ðŸŸ¢â–²" if change > 0 else "ðŸ”´â–¼" if change < 0 else "âšªâ–¬"
                 p_str = f"${price:,.2f}" if price >= 1 else f"${price:,.6f}"
                 mc_s = f"${mc/1e9:,.1f}B" if mc >= 1e9 else f"${mc/1e6:,.0f}M" if mc > 0 else ""
                 mc_part = f"  [{mc_s}]" if mc_s else ""
@@ -413,7 +413,7 @@ async def _send_markets(chat_id, context):
         import random
         exchanges = [
             ("WEEX", f"https://www.weex.com/en/spot/BTC_USDT?vipCode={WEEX_REF}"),
-            ("BYDFi", f"https://partner.bydfi.com/register?vipCode={BYDFI_REF}&f=Thefinaltrade"),
+            ("BYDFi", f"https://partner.bydfi.com/register?vipCode={BYDFI_REF}&f=AyewakenFutures"),
             ("Bitunix", f"https://www.bitunix.com/register?vipCode={BITUNIX_REF}"),
             ("BTCC", f"https://www.btcc.com/en-US/register?inviteCode={BTCC_REF}"),
             ("KCEX", f"https://www.kcex.com/register?inviteCode={KCEX_REF}")
@@ -422,13 +422,13 @@ async def _send_markets(chat_id, context):
 
         lines.extend([
             "",
-            f"📈 <a href='{affiliate_link}'>Trade Now on {exchange_name}</a>",
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-            "✝️ <i>The Final Trade — All glory to God</i>"
+            f"ðŸ“ˆ <a href='{affiliate_link}'>Trade Now on {exchange_name}</a>",
+            "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”",
+            "âœï¸ <i>AYEWAKEN FUTURES â€” All glory to God</i>"
         ])
         await context.bot.send_message(chat_id, "\n".join(lines), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     except Exception as e:
-        await context.bot.send_message(chat_id, f"❌ Error: <i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
+        await context.bot.send_message(chat_id, f"âŒ Error: <i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
 
 
 # ============================================================
@@ -440,34 +440,34 @@ async def _send_fear_greed(chat_id, context):
         val = int(fg['value'])
         classification = fg['value_classification']
 
-        if val < 20:   bar, emoji, insight = "🔴🔴🔴🔴🔴🔴🔴🔴⚪⚪", "😱", "EXTREME FEAR — Blood in the streets. Historically the best buy zone."
-        elif val < 40: bar, emoji, insight = "🟠🟠🟠🟠🟠🟠⚪⚪⚪⚪", "😰", "FEAR — Smart money accumulating. Watch whale wallets."
-        elif val < 60: bar, emoji, insight = "🟡🟡🟡🟡🟡🟡🟡⚪⚪⚪", "😐", "NEUTRAL — Market deciding direction. Stay alert."
-        elif val < 80: bar, emoji, insight = "🟢🟢🟢🟢🟢🟢🟢🟢⚪⚪", "😊", "GREED — Confidence rising. Trail your stops."
-        else:          bar, emoji, insight = "💰💰💰💰💰💰💰💰💰💰", "🤑", "EXTREME GREED — Euphoria! Tops form here. Protect capital."
+        if val < 20:   bar, emoji, insight = "ðŸ”´ðŸ”´ðŸ”´ðŸ”´ðŸ”´ðŸ”´ðŸ”´ðŸ”´âšªâšª", "ðŸ˜±", "EXTREME FEAR â€” Blood in the streets. Historically the best buy zone."
+        elif val < 40: bar, emoji, insight = "ðŸŸ ðŸŸ ðŸŸ ðŸŸ ðŸŸ ðŸŸ âšªâšªâšªâšª", "ðŸ˜°", "FEAR â€” Smart money accumulating. Watch whale wallets."
+        elif val < 60: bar, emoji, insight = "ðŸŸ¡ðŸŸ¡ðŸŸ¡ðŸŸ¡ðŸŸ¡ðŸŸ¡ðŸŸ¡âšªâšªâšª", "ðŸ˜", "NEUTRAL â€” Market deciding direction. Stay alert."
+        elif val < 80: bar, emoji, insight = "ðŸŸ¢ðŸŸ¢ðŸŸ¢ðŸŸ¢ðŸŸ¢ðŸŸ¢ðŸŸ¢ðŸŸ¢âšªâšª", "ðŸ˜Š", "GREED â€” Confidence rising. Trail your stops."
+        else:          bar, emoji, insight = "ðŸ’°ðŸ’°ðŸ’°ðŸ’°ðŸ’°ðŸ’°ðŸ’°ðŸ’°ðŸ’°ðŸ’°", "ðŸ¤‘", "EXTREME GREED â€” Euphoria! Tops form here. Protect capital."
 
         msg = (
             f"{emoji} <b>FEAR & GREED INDEX</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📊 <b>Score:</b> {val}/100\n"
-            f"📈 <b>Status:</b> {classification}\n"
+            f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n\n"
+            f"ðŸ“Š <b>Score:</b> {val}/100\n"
+            f"ðŸ“ˆ <b>Status:</b> {classification}\n"
             f"{bar}\n\n"
-            f"💡 <b>Insight:</b> {insight}\n\n"
-            f"🧠 <b>What this means:</b>\n"
-            f"┣ Below 25 = Historic buying opportunities\n"
-            f"┣ 25-50 = Accumulation phase\n"
-            f"┣ 50-75 = Bull market building\n"
-            f"┗ Above 75 = Distribution / exit zones\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"✝️ <i>The Final Trade — All glory to God</i>"
+            f"ðŸ’¡ <b>Insight:</b> {insight}\n\n"
+            f"ðŸ§  <b>What this means:</b>\n"
+            f"â”£ Below 25 = Historic buying opportunities\n"
+            f"â”£ 25-50 = Accumulation phase\n"
+            f"â”£ 50-75 = Bull market building\n"
+            f"â”— Above 75 = Distribution / exit zones\n\n"
+            f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
+            f"âœï¸ <i>AYEWAKEN FUTURES â€” All glory to God</i>"
         )
         await context.bot.send_message(chat_id, msg, parse_mode=ParseMode.HTML)
     except Exception as e:
-        await context.bot.send_message(chat_id, f"❌ Error: <i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
+        await context.bot.send_message(chat_id, f"âŒ Error: <i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
 
 
 # ============================================================
-# RSS NEWS COMMANDS — With thumbnails
+# RSS NEWS COMMANDS â€” With thumbnails
 # All categories share the same rich format
 # ============================================================
 async def news_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -494,7 +494,7 @@ async def finance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def _send_rss_news(chat_id, category, context):
     """Send news articles with thumbnails where available."""
     try:
-        config = CATEGORY_CONFIG.get(category, {"emoji": "📰", "label": category.upper(), "color": "⚪", "hashtag": ""})
+        config = CATEGORY_CONFIG.get(category, {"emoji": "ðŸ“°", "label": category.upper(), "color": "âšª", "hashtag": ""})
         feeds = NEWS_FEEDS.get(category, [])
         entries = []
 
@@ -507,7 +507,7 @@ async def _send_rss_news(chat_id, category, context):
                 pass
 
         if not entries:
-            await context.bot.send_message(chat_id, f"❌ No {category} news available right now.")
+            await context.bot.send_message(chat_id, f"âŒ No {category} news available right now.")
             return
 
         # Send first article with thumbnail as photo
@@ -517,15 +517,15 @@ async def _send_rss_news(chat_id, category, context):
             summary = extract_summary(entry, 250)
             caption = (
                 f"{config['emoji']} <b>{config['label']}</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"📌 <b>{entry.title}</b>\n\n"
+                f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n\n"
+                f"ðŸ“Œ <b>{entry.title}</b>\n\n"
                 f"{summary}\n\n"
-                f"🔗 <a href='{entry.link}'>Read Full Article</a>\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"✝️ <i>The Final Trade</i> {config['hashtag']}"
+                f"ðŸ”— <a href='{entry.link}'>Read Full Article</a>\n\n"
+                f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
+                f"âœï¸ <i>AYEWAKEN FUTURES</i> {config['hashtag']}"
             )
             keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("🌐 Open Article", url=entry.link)],
+                [InlineKeyboardButton("ðŸŒ Open Article", url=entry.link)],
             ])
 
             if thumb:
@@ -539,15 +539,15 @@ async def _send_rss_news(chat_id, category, context):
 
         # Send remaining articles as a consolidated text list
         if len(entries) > 1:
-            remaining_lines = [f"{config['emoji']} <b>MORE {config['label']} HEADLINES</b>", "━━━━━━━━━━━━━━━━━━━━━━━━━━", ""]
+            remaining_lines = [f"{config['emoji']} <b>MORE {config['label']} HEADLINES</b>", "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”", ""]
             for entry in entries[1:8]:
                 remaining_lines.append(f"{config['color']} <a href='{entry.link}'>{entry.title}</a>")
                 remaining_lines.append("")
-            remaining_lines.extend(["━━━━━━━━━━━━━━━━━━━━━━━━━━", f"✝️ <i>The Final Trade</i> {config['hashtag']}"])
+            remaining_lines.extend(["â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”", f"âœï¸ <i>AYEWAKEN FUTURES</i> {config['hashtag']}"])
             await context.bot.send_message(chat_id, "\n".join(remaining_lines), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
     except Exception as e:
-        await context.bot.send_message(chat_id, f"❌ Error: <i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
+        await context.bot.send_message(chat_id, f"âŒ Error: <i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
 
 
 # ============================================================
@@ -564,15 +564,15 @@ async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def _send_dashboard(chat_id, context):
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🖥️ Open Terminal", url="https://finaltrade-dashboard-91me6lozz-irayecrypto-1565s-projects.vercel.app")],
+        [InlineKeyboardButton("ðŸ–¥ï¸ Open Terminal", url="https://finaltrade-dashboard-91me6lozz-irayecrypto-1565s-projects.vercel.app")],
     ])
     msg = (
-        "🖥️ <b>THE FINAL TRADE TERMINAL</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "📊 Live Charts  📈 Market Data  📰 News\n"
-        "🧠 AI Signals  🛡️ Survival Intel\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "✝️ <i>The Final Trade — All glory to God</i>"
+        "ðŸ–¥ï¸ <b>AYEWAKEN FUTURES TERMINAL</b>\n"
+        "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n\n"
+        "ðŸ“Š Live Charts  ðŸ“ˆ Market Data  ðŸ“° News\n"
+        "ðŸ§  AI Signals  ðŸ›¡ï¸ Survival Intel\n\n"
+        "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
+        "âœï¸ <i>AYEWAKEN FUTURES â€” All glory to God</i>"
     )
     await context.bot.send_message(chat_id, msg, parse_mode=ParseMode.HTML, reply_markup=keyboard)
 
@@ -589,22 +589,23 @@ async def forecast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         fg_text = ""
         try:
             fg = requests.get(FEAR_GREED_API, timeout=5).json()['data'][0]
-            fg_text = f"😱 <b>Fear & Greed:</b> {fg['value']} ({fg['value_classification']})\n"
+            fg_text = f"ðŸ˜± <b>Fear & Greed:</b> {fg['value']} ({fg['value_classification']})\n"
         except:
             pass
 
-        ba = "🟢▲" if btc_c > 0 else "🔴▼"
-        ea = "🟢▲" if eth_c > 0 else "🔴▼"
+        ba = "ðŸŸ¢â–²" if btc_c > 0 else "ðŸ”´â–¼"
+        ea = "ðŸŸ¢â–²" if eth_c > 0 else "ðŸ”´â–¼"
 
         msg = (
-            f"📉 <b>BTC & ETH FORECAST</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"🟠 <b>BTC:</b> ${btc_p:,.2f}  {ba} {btc_c:+.1f}%\n"
-            f"🔷 <b>ETH:</b> ${eth_p:,.2f}  {ea} {eth_c:+.1f}%\n\n"
+            f"ðŸ“‰ <b>BTC & ETH FORECAST</b>\n"
+            f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n\n"
+            f"ðŸŸ  <b>BTC:</b> ${btc_p:,.2f}  {ba} {btc_c:+.1f}%\n"
+            f"ðŸ”· <b>ETH:</b> ${eth_p:,.2f}  {ea} {eth_c:+.1f}%\n\n"
             f"{fg_text}\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"✝️ <i>The Final Trade — All glory to God</i>"
+            f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
+            f"âœï¸ <i>AYEWAKEN FUTURES â€” All glory to God</i>"
         )
         await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
     except Exception as e:
-        await update.message.reply_text(f"❌ Error: <i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
+        await update.message.reply_text(f"âŒ Error: <i>{str(e)[:100]}</i>", parse_mode=ParseMode.HTML)
+
