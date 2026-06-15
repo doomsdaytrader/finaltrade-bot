@@ -4,7 +4,7 @@ import random
 from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.constants import ParseMode
 from config import (
-    GROUP_ID, TOPIC_SIGNALS, WEEX_REF, BYDFI_REF, BITUNIX_REF, BTCC_REF, KCEX_REF, COINGECKO_MARKETS
+    GROUP_ID, TOPIC_SIGNALS, BITBASE_REF, WEEX_REF, BYDFI_REF, BYBIT_REF, BITUNIX_REF, KCEX_REF, VOOX_REF, BITMART_REF, ORANGEX_REF, COINGECKO_MARKETS
 )
 from telegram_commands import estimate_rsi
 
@@ -74,29 +74,28 @@ def get_exchange_for_coin(symbol, category):
     l1_utility = ["SOL", "ADA", "DOT", "AVAX", "LINK", "LUNC", "USTC", "MATIC", "ATOM", "NEAR"]
 
     if symbol in blue_chips:
-        # BTCC for Blue Chips or BYDFI
         exchanges = [
-            ("BTCC", f"https://www.btcc.com/en-US/register?inviteCode={BTCC_REF}"),
-            ("BYDFi", f"https://partner.bydfi.com/register?vipCode={BYDFI_REF}"),
-            ("WEEX", f"https://www.weex.com/en/spot/{symbol}_USDT?vipCode={WEEX_REF}")
+            ("Bybit", f"https://partner.bybit.com/b/{BYBIT_REF}"),
+            ("Bitbase", f"https://www.bitbase.com/accounts/register/start?ref={BITBASE_REF}"),
+            ("WEEX", f"https://www.weex.com/en/register?vipCode={WEEX_REF}"),
+            ("BitMart", f"https://www.bitmart.com/invite/{BITMART_REF}")
         ]
         return random.choice(exchanges)
 
     elif symbol in l1_utility:
-        # BYDFi or WEEX
         exchanges = [
             ("BYDFi", f"https://partner.bydfi.com/register?vipCode={BYDFI_REF}"),
-            ("WEEX", f"https://www.weex.com/en/spot/{symbol}_USDT?vipCode={WEEX_REF}")
+            ("OrangeX", f"https://affiliates.orangex.com/affiliates/b/{ORANGEX_REF}"),
+            ("WEEX", f"https://www.weex.com/en/register?vipCode={WEEX_REF}")
         ]
         return random.choice(exchanges)
     
     else:
-        # Hot Spikes / Memes / Gainers / Losers -> Bitunix or KCEX
+        # Hot Spikes / Memes / Gainers / Losers
         exchanges = [
             ("Bitunix", f"https://www.bitunix.com/register?vipCode={BITUNIX_REF}"),
-            ("Bitunix", f"https://www.bitunix.com/register?vipCode={BITUNIX_REF}"),
-            ("KCEX", f"https://www.kcex.com/register?inviteCode={KCEX_REF}"),
-            ("KCEX", f"https://www.kcex.com/register?inviteCode={KCEX_REF}")
+            ("KCEX", f"https://www.kcex.com?inviteCode={KCEX_REF}"),
+            ("VOOX", f"https://voox.com/register?inviteCode={VOOX_REF}")
         ]
         return random.choice(exchanges)
 
@@ -186,14 +185,14 @@ async def auto_post_hottest_tokens(bot: Bot):
 
         # Categorize
         if target_coin['price_change_percentage_24h'] >= 2:
-            category = "🚀 BULLISH MOMENTUM ALERT"
-            trade_dir = "LONG 🟢"
+            category = "ðŸš€ BULLISH MOMENTUM ALERT"
+            trade_dir = "LONG ðŸŸ¢"
         elif target_coin['price_change_percentage_24h'] <= -2:
-            category = "🩸 REVERSAL & DIP OPPORTUNITY"
-            trade_dir = "SHORT 🔴"
+            category = "ðŸ©¸ REVERSAL & DIP OPPORTUNITY"
+            trade_dir = "SHORT ðŸ”´"
         else:
-            category = "⚖️ RANGE BOUND SCALP ZONES"
-            trade_dir = "SCALP ⚪"
+            category = "âš–ï¸ RANGE BOUND SCALP ZONES"
+            trade_dir = "SCALP âšª"
 
         name = target_coin['name']
         symbol = target_coin['symbol'].upper()
@@ -217,13 +216,13 @@ async def auto_post_hottest_tokens(bot: Bot):
         rsi = estimate_rsi(sparkline[-24:]) if len(sparkline) >= 14 else 50.0
 
         # Build trade setup logic
-        if trade_dir == "LONG 🟢":
+        if trade_dir == "LONG ðŸŸ¢":
             entry_price = price * 0.985  # Buy on short dip
             take_profit = price * 1.05   # Target +5%
             stop_loss = price * 0.95     # Stop -5%
             leverage = "10x-20x"
             reason = "High volume influx / Bullish momentum surge."
-        elif trade_dir == "SHORT 🔴":
+        elif trade_dir == "SHORT ðŸ”´":
             entry_price = price * 1.015  # Short on minor bounce
             take_profit = price * 0.95   # Target -5% down
             stop_loss = price * 1.05     # Stop +5%
@@ -244,28 +243,28 @@ async def auto_post_hottest_tokens(bot: Bot):
         vol_str = f"${volume/1e9:,.2f}B" if volume >= 1e9 else f"${volume/1e6:,.1f}M"
         mc_str = f"${market_cap/1e9:,.2f}B" if market_cap >= 1e9 else f"${market_cap/1e6:,.1f}M"
         
-        arrow = "🟢▲" if change_24h > 0 else "🔴▼"
+        arrow = "ðŸŸ¢â–²" if change_24h > 0 else "ðŸ”´â–¼"
 
         caption = (
-            f"⚡ <b>{category} — {name} ({symbol})</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"💰 <b>Price:</b> {p_str}\n"
+            f"âš¡ <b>{category} â€” {name} ({symbol})</b>\n"
+            f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n\n"
+            f"ðŸ’° <b>Price:</b> {p_str}\n"
             f"{arrow} <b>24h Change:</b> {change_24h:+.2f}%\n"
-            f"📈 <b>24h Volume:</b> {vol_str}\n"
-            f"📊 <b>Market Cap:</b> {mc_str}\n"
-            f"🧠 <b>AI RSI Status:</b> {rsi}\n\n"
-            f"🎯 <b>AI TRADE SETUP ({trade_dir})</b>\n"
-            f"┣ <b>Entry Range:</b> ${entry_price:,.5f}\n"
-            f"┣ <b>Take Profit:</b> ${take_profit:,.5f}\n"
-            f"┣ <b>Stop Loss:</b> ${stop_loss:,.5f}\n"
-            f"┣ <b>Leverage:</b> {leverage}\n"
-            f"┗ <b>Rationale:</b> {reason}\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"✝️ <i>The Final Trade</i> — <i>Always trade responsibly.</i>"
+            f"ðŸ“ˆ <b>24h Volume:</b> {vol_str}\n"
+            f"ðŸ“Š <b>Market Cap:</b> {mc_str}\n"
+            f"ðŸ§  <b>AI RSI Status:</b> {rsi}\n\n"
+            f"ðŸŽ¯ <b>AI TRADE SETUP ({trade_dir})</b>\n"
+            f"â”£ <b>Entry Range:</b> ${entry_price:,.5f}\n"
+            f"â”£ <b>Take Profit:</b> ${take_profit:,.5f}\n"
+            f"â”£ <b>Stop Loss:</b> ${stop_loss:,.5f}\n"
+            f"â”£ <b>Leverage:</b> {leverage}\n"
+            f"â”— <b>Rationale:</b> {reason}\n\n"
+            f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
+            f"âœï¸ <i>AYEWAKEN FUTURES</i> â€” <i>Always trade responsibly.</i>"
         )
 
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(f"📈 Trade {symbol} on {exchange_name}", url=affiliate_link)]
+            [InlineKeyboardButton(f"ðŸ“ˆ Trade {symbol} on {exchange_name}", url=affiliate_link)]
         ])
 
         topic_id = int(TOPIC_SIGNALS) if TOPIC_SIGNALS and TOPIC_SIGNALS != "0" else None
@@ -290,3 +289,4 @@ async def auto_post_hottest_tokens(bot: Bot):
             
     except Exception as e:
         logger.error(f"Hottest tokens auto-post error: {e}")
+
