@@ -1,7 +1,7 @@
 import os
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-GROUP_ID = os.environ.get("GROUP_ID", "-1001196364551")  # @ayewaken verified
+GROUP_ID = os.environ.get("GROUP_ID", "-1001738211204")  # @ayewaken verified
 
 # Affiliate / Referral Links
 BITBASE_REF = "TXNN7S"
