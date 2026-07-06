@@ -98,35 +98,44 @@ def is_urgent(title: str) -> bool:
 
 
 # ============================================================
-# AUTO-POST ENGINE V16 — Smart Pacing + Pinpoint Accuracy
-# ===========================================================def auto_post_loop(bot_token: str):
+# AUTO-POST ENGINE V17 — Priority Queue + Soothing Cadence
+# ============================================================
+def auto_post_loop(bot_token: str):
     bot = Bot(token=bot_token)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     time.sleep(5)
-    logger.info("=== AUTO-POST ENGINE V16 STARTED === DUAL-PACING MODE ===")
+    logger.info("=== AUTO-POST ENGINE V17 STARTED === PRIORITY QUEUE MODE ===")
 
-    hack_counter = 0
-    last_crypto_time = 0
-    last_news_time = 0
-    last_terra_time = 0
+    # --- Timers ---
+    last_priority_time = 0      # LUNC, USTC, BTC, ETH — every 11 min
+    last_general_time  = 0      # All other tokens     — every 30 min
+    last_news_time     = 0      # News categories      — every 20-30 min
     global last_digest_time
-    
-    categories = list(NEWS_FEEDS.keys())
-    cat_index = 0
-    
-    # Start immediately on first run
-    next_news_wait = 0
-    next_crypto_wait = 0
-    next_terra_wait = 0
-    
-    terra_toggle = False # Toggle between LUNC and USTC
+
+    # --- Priority queue: rotates LUNC → BTC → USTC → ETH → repeat ---
+    PRIORITY_SYMBOLS = ["lunc", "btc", "ustc", "eth"]
+    priority_index = 0
+
+    # --- General tokens (excluding priority ones) ---
+    GENERAL_EXCLUDE = {"lunc", "btc", "ustc", "eth", "terra-luna", "terrausd",
+                       "bitcoin", "ethereum"}
+
+    # --- News categories ---
+    categories   = list(NEWS_FEEDS.keys())
+    cat_index    = 0
+    hack_counter = 0
+
+    # Stagger: priority fires first, then wait before general and news
+    next_priority_wait = 0
+    next_general_wait  = 30 * 60   # first general fires 30 min after start
+    next_news_wait     = 5  * 60   # first news fires 5 min after start
 
     while True:
         try:
             current_time = time.time()
 
-            # Keep Render free tier alive
+            # Keep Render alive
             try:
                 requests.get("https://finaltrade-bot.onrender.com/", timeout=10)
                 requests.get("https://finaltrade-api.onrender.com/health", timeout=10)
@@ -134,80 +143,95 @@ def is_urgent(title: str) -> bool:
                 pass
 
             if GROUP_ID:
-                # === 1. LUNC / USTC ALERTS (Continuous 10-15 minutes) ===
-                if current_time - last_terra_time >= next_terra_wait:
-                    target = "lunc" if terra_toggle else "ustc"
-                    logger.info(f">>> Firing continuous Terra signal ({target.upper()})...")
-                    try:
-                        loop.run_until_complete(auto_post_hottest_tokens(bot, force_symbol=target))
-                        logger.info(f">>> TERRA SIGNAL ({target.upper()}) SENT")
-                        terra_toggle = not terra_toggle
-                    except Exception as sig_err:
-                        logger.error(f">>> TERRA SIGNAL FAILED: {sig_err}")
-                    
-                    last_terra_time = time.time()
-                    current_time = time.time()
-                    
-                    # Next wait: 10 to 15 minutes
-                    wait_terra_mins = random.randint(10, 15)
-                    next_terra_wait = wait_terra_mins * 60
-                    logger.info(f">>> Pacing: waiting {wait_terra_mins} min before next Terra signal...")
 
-                # === 2. GENERAL CRYPTO ALERTS (Every 7 to 21 minutes) ===
-                if current_time - last_crypto_time >= next_crypto_wait:
-                    logger.info(">>> Firing randomized 7-21min crypto signal...")
+                # === ENGINE 1: PRIORITY SIGNALS — LUNC / BTC / USTC / ETH every 11 min ===
+                if current_time - last_priority_time >= next_priority_wait:
+                    sym = PRIORITY_SYMBOLS[priority_index % len(PRIORITY_SYMBOLS)]
+                    logger.info(f">>> [PRIORITY] Firing {sym.upper()} signal...")
                     try:
-                        loop.run_until_complete(auto_post_hottest_tokens(bot))
-                        logger.info(">>> CRYPTO SIGNAL SENT")
-                    except Exception as sig_err:
-                        logger.error(f">>> CRYPTO SIGNAL FAILED: {sig_err}")
-                    
-                    last_crypto_time = time.time()
-                    current_time = time.time()
-                    
-                    # Next wait: 7 to 21 minutes
-                    wait_crypto_mins = random.randint(7, 21)
-                    next_crypto_wait = wait_crypto_mins * 60
-                    logger.info(f">>> Pacing: waiting {wait_crypto_mins} min before next crypto signal...")
+                        loop.run_until_complete(
+                            auto_post_hottest_tokens(bot, force_symbol=sym)
+                        )
+                        logger.info(f">>> [PRIORITY] {sym.upper()} SENT")
+                        priority_index += 1
+                    except Exception as e:
+                        logger.error(f">>> [PRIORITY] FAILED: {e}")
 
-                # === 2. NEWS & UPDATES (Every 10-20 minutes) ===
+                    last_priority_time = time.time()
+                    current_time = time.time()
+                    next_priority_wait = 11 * 60   # always exactly 11 min
+                    logger.info(">>> [PRIORITY] Next in 11 min")
+
+                # === ENGINE 2: GENERAL CRYPTO — all others every 30 min ===
+                if current_time - last_general_time >= next_general_wait:
+                    logger.info(">>> [GENERAL] Firing altcoin signal...")
+                    try:
+                        loop.run_until_complete(
+                            auto_post_hottest_tokens(bot, exclude_symbols=GENERAL_EXCLUDE)
+                        )
+                        logger.info(">>> [GENERAL] ALTCOIN SIGNAL SENT")
+                    except Exception as e:
+                        logger.error(f">>> [GENERAL] FAILED: {e}")
+
+                    last_general_time = time.time()
+                    current_time = time.time()
+                    next_general_wait = 30 * 60
+                    logger.info(">>> [GENERAL] Next in 30 min")
+
+                # === ENGINE 3: NEWS — one category every 20-30 min ===
                 if current_time - last_news_time >= next_news_wait:
                     category = categories[cat_index]
-                    feeds = NEWS_FEEDS[category]
-                    
-                    logger.info(f">>> Posting news category: {category}")
+                    feeds    = NEWS_FEEDS[category]
+                    logger.info(f">>> [NEWS] Posting category: {category}")
                     try:
                         loop.run_until_complete(auto_post_category(bot, category, feeds))
-                    except Exception as cat_err:
-                        logger.error(f"Error posting category {category}: {cat_err}")
-                    
+                    except Exception as e:
+                        logger.error(f">>> [NEWS] FAILED ({category}): {e}")
+
                     cat_index += 1
-                    
+
                     # Market Pulse every 3 categories
                     if cat_index % 3 == 0:
                         try:
                             loop.run_until_complete(auto_post_market_pulse(bot))
-                            logger.info(">>> MARKET PULSE SENT")
-                        except Exception as mp_err:
-                            logger.error(f"Error posting market pulse: {mp_err}")
-                            
-                    # Cycle complete: Handle Survival Hack and reset
+                            logger.info(">>> [NEWS] MARKET PULSE SENT")
+                        except Exception as e:
+                            logger.error(f">>> [NEWS] Market pulse failed: {e}")
+
+                    # Full cycle complete → survival hack
                     if cat_index >= len(categories):
                         cat_index = 0
                         hack_counter += 1
-                        if hack_counter >= 2:
+                        if hack_counter >= 3:
                             try:
                                 loop.run_until_complete(auto_post_survival_hack(bot))
-                                logger.info(">>> SURVIVAL HACK SENT")
-                            except Exception as hack_err:
-                                logger.error(f"Error posting survival hack: {hack_err}")
+                                logger.info(">>> [NEWS] SURVIVAL HACK SENT")
+                            except Exception as e:
+                                logger.error(f">>> [NEWS] Survival hack failed: {e}")
                             hack_counter = 0
-                            
+
                     last_news_time = time.time()
-                    # Next wait: 10 to 20 minutes
-                    wait_mins = random.randint(10, 20)
+                    current_time   = time.time()
+                    wait_mins      = random.randint(20, 30)
                     next_news_wait = wait_mins * 60
-                    logger.info(f">>> Pacing: waiting {wait_mins} min before next news post...")
+                    logger.info(f">>> [NEWS] Next in {wait_mins} min")
+
+                # === 2-HOUR DIGEST ===
+                if current_time - last_digest_time >= 7200:
+                    try:
+                        loop.run_until_complete(auto_post_2hr_digest(bot))
+                        logger.info(">>> DIGEST SENT")
+                    except Exception as e:
+                        logger.error(f">>> DIGEST FAILED: {e}")
+                    last_digest_time = time.time()
+
+        except Exception as e:
+            logger.error(f"Auto-post cycle error: {e}")
+
+        # Tick every 30 seconds
+        time.sleep(30)
+
+
                     current_time = time.time()
 
                 # === 3. 2-HOUR DIGEST ===
