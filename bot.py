@@ -40,6 +40,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 posted_urls = set()
+try:
+    if os.path.exists("posted_urls.txt"):
+        with open("posted_urls.txt", "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    posted_urls.add(line.strip())
+except Exception:
+    pass
+
 recent_news_digest = []
 last_digest_time = time.time()
 
@@ -184,7 +193,7 @@ def is_urgent(title: str) -> bool:
             logger.error(f"Auto-post cycle error: {e}")
 
         # Tick frequency: check timers every 30 seconds
-        time.sleep(30)0)
+        time.sleep(30)
 
 
 # ============================================================
@@ -210,9 +219,15 @@ async def auto_post_category(bot: Bot, category: str, feeds: list):
     for rss_url in feeds:
         try:
             feed = feedparser.parse(rss_url)
-            for entry in feed.entries[:3]:
+            for entry in feed.entries[:5]:
                 if entry.link not in posted_urls:
                     posted_urls.add(entry.link)
+                    try:
+                        with open("posted_urls.txt", "a", encoding="utf-8") as f:
+                            f.write(entry.link + "\n")
+                    except Exception:
+                        pass
+                    
                     thumb = extract_thumbnail(entry)
                     summary = extract_summary(entry, 350)
                     safe_title = html_module.escape(entry.title)
@@ -304,7 +319,14 @@ async def auto_post_category(bot: Bot, category: str, feeds: list):
                 disable_web_page_preview=True, message_thread_id=topic_id)
 
     if len(posted_urls) > 1000:
-        posted_urls = set(list(posted_urls)[-500:])
+        keep = list(posted_urls)[-500:]
+        posted_urls = set(keep)
+        try:
+            with open("posted_urls.txt", "w", encoding="utf-8") as f:
+                for link in keep:
+                    f.write(link + "\n")
+        except Exception:
+            pass
 
 
 # ============================================================
