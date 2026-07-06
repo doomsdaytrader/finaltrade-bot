@@ -116,6 +116,7 @@ def is_urgent(title: str) -> bool:
     
     # Start immediately on first run
     next_news_wait = 0
+    next_crypto_wait = 0
 
     while True:
         try:
@@ -129,9 +130,9 @@ def is_urgent(title: str) -> bool:
                 pass
 
             if GROUP_ID:
-                # === 1. CRYPTO ALERTS (Every 7 minutes) ===
-                if current_time - last_crypto_time >= 7 * 60:
-                    logger.info(">>> Firing 7-min crypto signal...")
+                # === 1. CRYPTO ALERTS (Every 7 to 21 minutes) ===
+                if current_time - last_crypto_time >= next_crypto_wait:
+                    logger.info(">>> Firing randomized 7-21min crypto signal...")
                     try:
                         loop.run_until_complete(auto_post_hottest_tokens(bot))
                         logger.info(">>> CRYPTO SIGNAL SENT")
@@ -140,6 +141,11 @@ def is_urgent(title: str) -> bool:
                     
                     last_crypto_time = time.time()
                     current_time = time.time()
+                    
+                    # Next wait: 7 to 21 minutes
+                    wait_crypto_mins = random.randint(7, 21)
+                    next_crypto_wait = wait_crypto_mins * 60
+                    logger.info(f">>> Pacing: waiting {wait_crypto_mins} min before next crypto signal...")
 
                 # === 2. NEWS & UPDATES (Every 10-20 minutes) ===
                 if current_time - last_news_time >= next_news_wait:
