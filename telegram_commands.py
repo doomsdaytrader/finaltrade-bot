@@ -290,7 +290,7 @@ async def _send_full_signal(chat_id, coin_id, context):
         def arrow(v): return "ðŸŸ¢â–²" if v > 0 else "ðŸ”´â–¼" if v < 0 else "âšªâ–¬"
 
         from token_alerts import get_exchange_for_coin
-        exchange_name, affiliate_link = get_exchange_for_coin(symbol, "MANUAL SIGNAL")
+        exchange_name, affiliate_link = get_exchange_for_coin(symbol)
 
         caption = (
             f"ðŸš¨ <b>{name} ({symbol}) â€” FULL SIGNAL</b>\n"
@@ -304,22 +304,18 @@ async def _send_full_signal(chat_id, coin_id, context):
             f"ðŸ“ˆ <b>24h Volume:</b> {vol_str}\n"
             f"ðŸ”„ <b>Circulating:</b> {circ_str} {symbol}\n"
             f"ðŸ† <b>ATH:</b> {ath_str} ({ath_change:+.1f}% from ATH)\n\n"
+            f"📊 <b>Market Cap:</b> {mc_str}\n"
+            f"📈 <b>24h Volume:</b> {vol_str}\n"
+            f"🔄 <b>Circulating:</b> {circ_str} {symbol}\n"
+            f"🏆 <b>ATH:</b> {ath_str} ({ath_change:+.1f}% from ATH)\n\n"
             f"{ai_signal}\n\n"
-            f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
-            f"âœï¸ <i>AYEWAKEN FUTURES â€” All glory to God</i>"
+            f"〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰 \n"
+            f"✒️ <i>AYEWAKEN FUTURES — All glory to God</i>"
         )
 
-        buttons = [
-            [InlineKeyboardButton(f"ðŸ“ˆ Trade {symbol} on {exchange_name}", url=affiliate_link)]
-        ]
-        
-        # Inject Epic Mini-App Button for Terra classic community
-        if symbol in ["LUNC", "USTC"]:
-            buttons.append([InlineKeyboardButton("ðŸ”¥ LUNC TO $0.37 MINI-APP", url="https://finaltrade-dashboard-91me6lozz-irayecrypto-1565s-projects.vercel.app/lunc/index.html")])
-        
-        buttons.append([InlineKeyboardButton("ðŸ”™ Main Menu", callback_data="cmd_back")])
-        
-        keyboard = InlineKeyboardMarkup(buttons)
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton(f"📈 Trade {symbol} on {exchange_name}", url=affiliate_link)]
+        ])
 
         if image_url:
             await context.bot.send_photo(chat_id=chat_id, photo=image_url, caption=caption, parse_mode=ParseMode.HTML, reply_markup=keyboard)
