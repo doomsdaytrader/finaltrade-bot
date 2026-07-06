@@ -109,6 +109,7 @@ def is_urgent(title: str) -> bool:
     hack_counter = 0
     last_crypto_time = 0
     last_news_time = 0
+    last_terra_time = 0
     global last_digest_time
     
     categories = list(NEWS_FEEDS.keys())
@@ -117,6 +118,9 @@ def is_urgent(title: str) -> bool:
     # Start immediately on first run
     next_news_wait = 0
     next_crypto_wait = 0
+    next_terra_wait = 0
+    
+    terra_toggle = False # Toggle between LUNC and USTC
 
     while True:
         try:
@@ -130,7 +134,26 @@ def is_urgent(title: str) -> bool:
                 pass
 
             if GROUP_ID:
-                # === 1. CRYPTO ALERTS (Every 7 to 21 minutes) ===
+                # === 1. LUNC / USTC ALERTS (Continuous 10-15 minutes) ===
+                if current_time - last_terra_time >= next_terra_wait:
+                    target = "lunc" if terra_toggle else "ustc"
+                    logger.info(f">>> Firing continuous Terra signal ({target.upper()})...")
+                    try:
+                        loop.run_until_complete(auto_post_hottest_tokens(bot, force_symbol=target))
+                        logger.info(f">>> TERRA SIGNAL ({target.upper()}) SENT")
+                        terra_toggle = not terra_toggle
+                    except Exception as sig_err:
+                        logger.error(f">>> TERRA SIGNAL FAILED: {sig_err}")
+                    
+                    last_terra_time = time.time()
+                    current_time = time.time()
+                    
+                    # Next wait: 10 to 15 minutes
+                    wait_terra_mins = random.randint(10, 15)
+                    next_terra_wait = wait_terra_mins * 60
+                    logger.info(f">>> Pacing: waiting {wait_terra_mins} min before next Terra signal...")
+
+                # === 2. GENERAL CRYPTO ALERTS (Every 7 to 21 minutes) ===
                 if current_time - last_crypto_time >= next_crypto_wait:
                     logger.info(">>> Firing randomized 7-21min crypto signal...")
                     try:
