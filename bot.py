@@ -232,23 +232,6 @@ def auto_post_loop(bot_token: str):
         time.sleep(30)
 
 
-                    current_time = time.time()
-
-                # === 3. 2-HOUR DIGEST ===
-                if current_time - last_digest_time >= 7200:
-                    try:
-                        loop.run_until_complete(auto_post_2hr_digest(bot))
-                    except Exception as digest_err:
-                        logger.error(f"Error posting digest: {digest_err}")
-                    last_digest_time = time.time()
-
-        except Exception as e:
-            logger.error(f"Auto-post cycle error: {e}")
-
-        # Tick frequency: check timers every 30 seconds
-        time.sleep(30)
-
-
 # ============================================================
 # AUTO-POST: RSS CATEGORY (Urgent → Immediate | Others → Digest)
 # ============================================================
@@ -500,7 +483,7 @@ if __name__ == '__main__':
     # Start auto-posting thread
     if GROUP_ID:
         threading.Thread(target=auto_post_loop, args=(BOT_TOKEN,), daemon=True).start()
-        print(f"Auto-posting V16 armed for group {GROUP_ID}")
+        print(f"Auto-posting V17 armed for group {GROUP_ID}")
     else:
         print("No GROUP_ID set — auto-posting disabled.")
 
@@ -526,5 +509,5 @@ if __name__ == '__main__':
 
     app.add_handler(CallbackQueryHandler(button_callback))
 
-    print("✅ AYEWAKEN FUTURES Bot V16 — All glory to God! LIVE.")
+    print("✅ AYEWAKEN FUTURES Bot V17 — All glory to God! LIVE.")
     app.run_polling()
