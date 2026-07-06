@@ -1,4 +1,5 @@
-﻿import re
+# -*- coding: utf-8 -*-
+import re
 import requests
 import feedparser
 from statistics import mean
@@ -6,11 +7,12 @@ from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from config import (
-    WEEX_REF, BYDFI_REF, BITUNIX_REF, BTCC_REF, KCEX_REF,
+    WEEX_REF, BYDFI_REF, BITUNIX_REF, BYBIT_REF, KCEX_REF, BITBASE_REF, VOOX_REF, BITMART_REF, ORANGEX_REF,
     TRC20_WALLET, BTC_WALLET, ETH_WALLET,
     COINGECKO_MARKETS, COINGECKO_COIN, FEAR_GREED_API,
     NEWS_FEEDS, CATEGORY_CONFIG
 )
+
 
 
 # ============================================================
@@ -58,8 +60,9 @@ def extract_thumbnail(entry):
     return None
 
 
-def extract_summary(entry, max_len=200):
-    """Extract a clean text summary from RSS entry."""
+def extract_summary(entry, max_len=350):
+    """Extract a clean, readable text summary from an RSS entry."""
+    import html
     summary = ''
     if hasattr(entry, 'summary') and entry.summary:
         summary = entry.summary
@@ -70,10 +73,17 @@ def extract_summary(entry, max_len=200):
 
     # Strip HTML tags
     clean = re.sub(r'<[^>]+>', '', summary).strip()
-    # Truncate
+    # Unescape HTML entities (&amp; &nbsp; &#8217; etc.) -> readable text
+    clean = html.unescape(clean)
+    # Remove any leftover repeating garbage characters or excessive whitespace
+    clean = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', clean)
+    clean = re.sub(r' +', ' ', clean)
+    clean = re.sub(r'\n{3,}', '\n\n', clean).strip()
+    # Truncate cleanly at a sentence or word boundary
     if len(clean) > max_len:
         clean = clean[:max_len].rsplit(' ', 1)[0] + '...'
     return clean
+
 
 
 # ============================================================
