@@ -112,7 +112,7 @@ def get_exchange_for_coin(symbol, category):
 # ============================================================
 # AUTO-POST: HOTTEST TOKENS SIGNAL
 # ============================================================
-async def auto_post_hottest_tokens(bot: Bot):
+async def auto_post_hottest_tokens(bot: Bot, force_symbol=None):
     """
     Scans Top 20 market cap tokens + Terra Ecosystem (LUNC/USTC)
     and posts a robust trading setup with real-time prices and affiliate links.
@@ -177,32 +177,43 @@ async def auto_post_hottest_tokens(bot: Bot):
         valid_coins = [c for c in data if c.get('price_change_percentage_24h') is not None]
         valid_coins.sort(key=lambda x: abs(x['price_change_percentage_24h']), reverse=True)
 
-        # Pick next coin not recently alerted
         target_coin = None
-        for c in valid_coins:
-            if c['id'] not in recent_alerts:
-                target_coin = c
-                break
+        if force_symbol:
+            for c in valid_coins:
+                if c['symbol'].lower() == force_symbol.lower():
+                    target_coin = c
+                    break
+            if not target_coin:
+                # If forced coin is somehow missing from cache, fallback to general
+                logger.warning(f"[TOKEN SCANNER] Forced coin {force_symbol} not found in cache.")
 
-        # If all cycled, reset and start over
-        if not target_coin and valid_coins:
-            recent_alerts.clear()
-            target_coin = valid_coins[0]
+        if not target_coin:
+            # Pick next coin not recently alerted
+            for c in valid_coins:
+                if c['id'] not in recent_alerts:
+                    target_coin = c
+                    break
+
+            # If all cycled, reset and start over
+            if not target_coin and valid_coins:
+                recent_alerts.clear()
+                target_coin = valid_coins[0]
 
         if not target_coin:
             logger.warning("[TOKEN SCANNER] No target coin found.")
             return
 
-        recent_alerts.append(target_coin['id'])
-        if len(recent_alerts) > 12:
-            recent_alerts.pop(0)
-            
-        try:
-            with open("recent_alerts.txt", "w", encoding="utf-8") as f:
-                for coin_id in recent_alerts:
-                    f.write(coin_id + "\n")
-        except Exception:
-            pass
+        if not force_symbol:
+            recent_alerts.append(target_coin['id'])
+            if len(recent_alerts) > 12:
+                recent_alerts.pop(0)
+                
+            try:
+                with open("recent_alerts.txt", "w", encoding="utf-8") as f:
+                    for coin_id in recent_alerts:
+                        f.write(coin_id + "\n")
+            except Exception:
+                pass
 
         name   = target_coin['name']
         symbol = target_coin['symbol'].upper()
