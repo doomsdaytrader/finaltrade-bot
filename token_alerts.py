@@ -15,8 +15,19 @@ from telegram_commands import estimate_rsi
 
 logger = logging.getLogger(__name__)
 
+import os
+
 # Track recently alerted coins to rotate through them
 recent_alerts = []
+try:
+    if os.path.exists("recent_alerts.txt"):
+        with open("recent_alerts.txt", "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    recent_alerts.append(line.strip())
+except Exception:
+    pass
+
 
 # Pre-seeded cache so the bot has data to fire on cold start
 market_cache = [
@@ -185,6 +196,13 @@ async def auto_post_hottest_tokens(bot: Bot):
         recent_alerts.append(target_coin['id'])
         if len(recent_alerts) > 12:
             recent_alerts.pop(0)
+            
+        try:
+            with open("recent_alerts.txt", "w", encoding="utf-8") as f:
+                for coin_id in recent_alerts:
+                    f.write(coin_id + "\n")
+        except Exception:
+            pass
 
         name   = target_coin['name']
         symbol = target_coin['symbol'].upper()
