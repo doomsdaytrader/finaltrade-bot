@@ -1,4 +1,5 @@
-﻿import logging
+# -*- coding: utf-8 -*-
+import logging
 import threading
 import asyncio
 import time
@@ -6,12 +7,14 @@ import requests
 import feedparser
 import re
 import random
+import html as html_module
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 from telegram.constants import ParseMode
 from config import (
-    BOT_TOKEN, GROUP_ID, WEEX_REF, BYDFI_REF, BITUNIX_REF, BTCC_REF, KCEX_REF,
+    BOT_TOKEN, GROUP_ID, WEEX_REF, BYDFI_REF, BITUNIX_REF, BYBIT_REF, KCEX_REF,
+    BITBASE_REF, VOOX_REF, BITMART_REF, ORANGEX_REF,
     TOPIC_NEWS, TOPIC_SURVIVAL, TOPIC_SIGNALS, TOPIC_MARKET,
     NEWS_FEEDS, CATEGORY_CONFIG, FEAR_GREED_API
 )
@@ -30,7 +33,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
     handlers=[
-        logging.FileHandler("bot.log"),
+        logging.FileHandler("bot.log", encoding="utf-8"),
         logging.StreamHandler()
     ]
 )
@@ -41,7 +44,6 @@ recent_news_digest = []
 last_digest_time = time.time()
 
 
-
 # ============================================================
 # HEALTH SERVER
 # ============================================================
@@ -49,21 +51,23 @@ class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/logs':
             self.send_response(200)
-            self.send_header('Content-type', 'text/plain')
+            self.send_header('Content-type', 'text/plain; charset=utf-8')
             self.end_headers()
             try:
-                with open("bot.log", "r") as f:
+                with open("bot.log", "r", encoding="utf-8") as f:
                     lines = f.readlines()
-                    self.wfile.write("".join(lines[-100:]).encode())
+                    self.wfile.write("".join(lines[-100:]).encode("utf-8"))
             except Exception as e:
-                self.wfile.write(str(e).encode())
+                self.wfile.write(str(e).encode("utf-8"))
         else:
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(b'{"status":"alive","bot":"AyewakenFuturesBot"}')
+
     def log_message(self, format, *args):
         pass
+
 
 def run_health_server():
     server = HTTPServer(('0.0.0.0', 10000), HealthHandler)
@@ -71,97 +75,104 @@ def run_health_server():
 
 
 # ============================================================
-# AUTO-POST ENGINE â€” With thumbnails & rich formatting
+# URGENT KEYWORD DETECTION
 # ============================================================
+URGENT_KEYWORDS = [
+    'breaking', 'urgent', 'emergency', 'crash', 'collapse', 'surge', 'plunge',
+    'hack', 'exploit', 'ban', 'war', 'attack', 'explosion', 'earthquake',
+    'shutdown', 'halt', 'seized', 'arrested', 'blackout', 'outbreak'
+]
 
+def is_urgent(title: str) -> bool:
+    t = title.lower()
+    return any(kw in t for kw in URGENT_KEYWORDS)
+
+
+# ============================================================
+# AUTO-POST ENGINE V16 — Smart Pacing + Pinpoint Accuracy
+# ============================================================
 def auto_post_loop(bot_token: str):
     bot = Bot(token=bot_token)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     time.sleep(5)
-    logger.info("=== AUTO-POST ENGINE V15 STARTED === PINPOINT ACCURACY MODE ===")
+    logger.info("=== AUTO-POST ENGINE V16 STARTED === SMART PACING + PINPOINT ACCURACY ===")
 
     hack_counter = 0
     global last_digest_time
 
     while True:
         try:
-            # Render Free Tier Keep-Alive
+            # Keep Render free tier alive
             try:
-                # Hits its OWN url and the API url to prevent sleep
                 requests.get("https://finaltrade-bot.onrender.com/", timeout=10)
                 requests.get("https://finaltrade-api.onrender.com/health", timeout=10)
-                logger.debug("Keep-Alive pings sent.")
-            except:
+            except Exception:
                 pass
 
             if GROUP_ID:
-                # =============================================
-                # PHASE 1: RAPID-FIRE CRYPTO SIGNAL BURST
-                # =============================================
-                logger.info(">>> PHASE 1: Firing 3x rapid crypto signals...")
+                # === PHASE 1: 3x Crypto Signal Burst ===
+                logger.info(">>> PHASE 1: Firing 3x crypto signals...")
                 for i in range(3):
                     try:
                         loop.run_until_complete(auto_post_hottest_tokens(bot))
-                        logger.info(f">>> CRYPTO SIGNAL {i+1}/3 SENT SUCCESSFULLY")
+                        logger.info(f">>> CRYPTO SIGNAL {i+1}/3 SENT")
                     except Exception as sig_err:
                         logger.error(f">>> CRYPTO SIGNAL {i+1}/3 FAILED: {sig_err}")
-                    time.sleep(8)
-                
-                # =============================================
-                # PHASE 2: NEWS + SIGNAL INTERLEAVE
-                # =============================================
-                logger.info(">>> PHASE 2: News + Signal interleave starting...")
+                    time.sleep(10)
+
+                # === PHASE 2: News Digest + Signal Interleave ===
+                logger.info(">>> PHASE 2: Smart news digest + signal interleave...")
                 cat_count = 0
                 for category, feeds in NEWS_FEEDS.items():
                     loop.run_until_complete(auto_post_category(bot, category, feeds))
-                    time.sleep(20)
-                    
                     cat_count += 1
-                    
-                    # Fire a crypto signal after EVERY news category
+
+                    # Crypto signal after each news category
                     try:
                         loop.run_until_complete(auto_post_hottest_tokens(bot))
                         logger.info(f">>> CRYPTO SIGNAL after [{category}] SENT")
                     except Exception as sig_err:
                         logger.error(f">>> CRYPTO SIGNAL after [{category}] FAILED: {sig_err}")
-                    time.sleep(8)
-                    
-                    # Every 4 news categories, fire the Market Pulse
+
+                    # Market Pulse every 4 categories
                     if cat_count % 4 == 0:
                         loop.run_until_complete(auto_post_market_pulse(bot))
                         logger.info(">>> MARKET PULSE SENT")
                         time.sleep(10)
 
-                # =============================================
-                # PHASE 3: SURVIVAL + DIGEST
-                # =============================================
+                    # Smart pacing: 7–21 min random wait between news categories
+                    wait_mins = random.randint(7, 21)
+                    logger.info(f">>> Pacing: waiting {wait_mins} min before next category...")
+                    time.sleep(wait_mins * 60)
+
+                # === PHASE 3: Survival Hack + 2hr Digest ===
                 hack_counter += 1
                 if hack_counter >= 2:
                     loop.run_until_complete(auto_post_survival_hack(bot))
                     hack_counter = 0
 
-                # 2-Hour News Digest Rollup
                 current_time = time.time()
                 if current_time - last_digest_time >= 7200:
                     loop.run_until_complete(auto_post_2hr_digest(bot))
                     last_digest_time = current_time
-                
-                logger.info("=== FULL CYCLE COMPLETE â€” Restarting in 10 seconds ===")
+
+                logger.info("=== FULL CYCLE COMPLETE ===")
 
         except Exception as e:
             logger.error(f"Auto-post cycle error: {e}")
 
-        # Short wait before restarting the entire cycle
-        time.sleep(10)
+        time.sleep(30)
 
 
+# ============================================================
+# AUTO-POST: RSS CATEGORY (Urgent → Immediate | Others → Digest)
+# ============================================================
 async def auto_post_category(bot: Bot, category: str, feeds: list):
-    """Auto-post RSS articles with thumbnails to the group."""
+    """Post urgent articles immediately. Group non-urgent into a clean digest."""
     global posted_urls, recent_news_digest
-    config = CATEGORY_CONFIG.get(category, {"emoji": "ðŸ“°", "label": category.upper(), "color": "âšª", "hashtag": ""})
+    config = CATEGORY_CONFIG.get(category, {"emoji": "📰", "label": category.upper(), "color": "⚪", "hashtag": ""})
 
-    # Route to correct topic
     topic_map = {
         "crypto": TOPIC_NEWS, "finance": TOPIC_NEWS,
         "world": TOPIC_SURVIVAL, "survival": TOPIC_SURVIVAL,
@@ -171,119 +182,146 @@ async def auto_post_category(bot: Bot, category: str, feeds: list):
     topic_id_str = topic_map.get(category, "0")
     topic_id = int(topic_id_str) if topic_id_str and topic_id_str != "0" else None
 
+    urgent_articles = []
+    digest_articles = []
+
     for rss_url in feeds:
         try:
             feed = feedparser.parse(rss_url)
-            for entry in feed.entries[:2]:
+            for entry in feed.entries[:3]:
                 if entry.link not in posted_urls:
                     posted_urls.add(entry.link)
-
                     thumb = extract_thumbnail(entry)
-                    summary = extract_summary(entry, 200)
-
-                    # Track for 2-hour digest roll-up
-                    recent_news_digest.append(f"{config['emoji']} <a href='{entry.link}'>{entry.title}</a>")
+                    summary = extract_summary(entry, 350)
+                    safe_title = html_module.escape(entry.title)
+                    recent_news_digest.append(f"{config['emoji']} <a href='{entry.link}'>{safe_title}</a>")
                     if len(recent_news_digest) > 40:
                         recent_news_digest.pop(0)
-
-                    # Detect commodities for affiliate link injection
-                    text_to_check = (entry.title + " " + summary).lower()
-                    commodity_link = ""
-                    commodities = ['gold', 'silver', 'oil', 'platinum', 'palladium', 'precious metal', 'rare earth']
-                    if any(kw in text_to_check for kw in commodities):
-                        from config import BYDFI_REF
-                        commodity_link = f"\n\nâ›ï¸ <b>Trade Commodities on BYDFi:</b> <a href='https://partner.bydfi.com/register?vipCode={BYDFI_REF}&f=AyewakenFutures'>Click Here</a>"
-
-                    caption = (
-                        f"{config['emoji']} <b>{config['label']} ALERT</b>\n"
-                        f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n\n"
-                        f"ðŸ“Œ <b>{entry.title}</b>\n\n"
-                    )
-                    if summary:
-                        caption += f"{summary}\n\n"
-                    caption += (
-                        f"ðŸ”— <a href='{entry.link}'>Read Full Report</a>{commodity_link}\n\n"
-                        f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
-                        f"âœï¸ <i>AYEWAKEN FUTURES</i> {config['hashtag']}"
-                    )
-
-                    keyboard = InlineKeyboardMarkup([
-                        [InlineKeyboardButton("ðŸŒ Read Article", url=entry.link)],
-                    ])
-
-                    # Try sending with thumbnail photo
-                    sent = False
-                    if thumb:
-                        try:
-                            await bot.send_photo(
-                                chat_id=int(GROUP_ID), photo=thumb,
-                                caption=caption, parse_mode=ParseMode.HTML,
-                                reply_markup=keyboard,
-                                message_thread_id=topic_id
-                            )
-                            sent = True
-                        except Exception as img_err:
-                            logger.warning(f"Photo send failed for {thumb}: {img_err}")
-
-                    if not sent:
-                        await bot.send_message(
-                            chat_id=int(GROUP_ID), text=caption,
-                            parse_mode=ParseMode.HTML,
-                            reply_markup=keyboard,
-                            disable_web_page_preview=False,
-                            message_thread_id=topic_id
-                        )
-
-                    await asyncio.sleep(4)
-
+                    if is_urgent(entry.title):
+                        urgent_articles.append((entry, thumb, summary, safe_title))
+                    else:
+                        digest_articles.append((entry, thumb, summary, safe_title))
         except Exception as e:
-            logger.error(f"Auto-post {category} error ({rss_url}): {e}")
+            logger.error(f"Feed parse error ({rss_url}): {e}")
 
-    # Keep a deep cache so we don't repost links
+    # --- Post urgent articles immediately, one per post ---
+    for entry, thumb, summary, safe_title in urgent_articles:
+        commodity_link = ""
+        if any(kw in (entry.title + summary).lower() for kw in ['gold', 'silver', 'oil', 'platinum']):
+            commodity_link = f"\n\n⛏️ <b>Trade Commodities on BYDFi:</b> <a href='https://partner.bydfi.com/register?vipCode={BYDFI_REF}'>Click Here</a>"
+        caption = (
+            f"🚨 <b>URGENT — {config['label']}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📌 <b>{safe_title}</b>\n\n"
+            f"{summary}\n\n"
+            f"🔗 <a href='{entry.link}'>Read Full Report</a>{commodity_link}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"✍️ <i>AYEWAKEN FUTURES</i> {config['hashtag']}"
+        )
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🌐 Read Full Article", url=entry.link)]])
+        sent = False
+        if thumb:
+            try:
+                await bot.send_photo(chat_id=int(GROUP_ID), photo=thumb, caption=caption,
+                    parse_mode=ParseMode.HTML, reply_markup=keyboard, message_thread_id=topic_id)
+                sent = True
+            except Exception as img_err:
+                logger.warning(f"Urgent photo failed: {img_err}")
+        if not sent:
+            await bot.send_message(chat_id=int(GROUP_ID), text=caption,
+                parse_mode=ParseMode.HTML, reply_markup=keyboard,
+                disable_web_page_preview=False, message_thread_id=topic_id)
+        await asyncio.sleep(5)
+
+    # --- Post non-urgent as grouped digest ---
+    if digest_articles:
+        if len(digest_articles) == 1:
+            entry, thumb, summary, safe_title = digest_articles[0]
+            caption = (
+                f"{config['emoji']} <b>{config['label']} UPDATE</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"📌 <b>{safe_title}</b>\n\n"
+                f"{summary}\n\n"
+                f"🔗 <a href='{entry.link}'>Read Full Report</a>\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"✍️ <i>AYEWAKEN FUTURES</i> {config['hashtag']}"
+            )
+            keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🌐 Read Article", url=entry.link)]])
+            sent = False
+            if thumb:
+                try:
+                    await bot.send_photo(chat_id=int(GROUP_ID), photo=thumb, caption=caption,
+                        parse_mode=ParseMode.HTML, reply_markup=keyboard, message_thread_id=topic_id)
+                    sent = True
+                except Exception:
+                    pass
+            if not sent:
+                await bot.send_message(chat_id=int(GROUP_ID), text=caption,
+                    parse_mode=ParseMode.HTML, disable_web_page_preview=False, message_thread_id=topic_id)
+        else:
+            # Multiple articles — clean numbered digest post
+            lines = [
+                f"{config['emoji']} <b>{config['label']} — NEWS ROUNDUP</b>",
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            ]
+            buttons = []
+            for i, (entry, thumb, summary, safe_title) in enumerate(digest_articles[:5], 1):
+                short = summary[:200].rsplit(' ', 1)[0] + '...' if len(summary) > 200 else summary
+                lines.append(f"<b>{i}. {safe_title}</b>")
+                if short:
+                    lines.append(f"<i>{short}</i>")
+                lines.append(f"🔗 <a href='{entry.link}'>Read more</a>\n")
+                buttons.append([InlineKeyboardButton(f"📰 Story {i}", url=entry.link)])
+            lines.extend([
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                f"✍️ <i>AYEWAKEN FUTURES</i> {config['hashtag']}"
+            ])
+            keyboard = InlineKeyboardMarkup(buttons[:5])
+            await bot.send_message(chat_id=int(GROUP_ID), text="\n".join(lines),
+                parse_mode=ParseMode.HTML, reply_markup=keyboard,
+                disable_web_page_preview=True, message_thread_id=topic_id)
+
     if len(posted_urls) > 1000:
         posted_urls = set(list(posted_urls)[-500:])
 
+
+# ============================================================
+# AUTO-POST: 2-HOUR GLOBAL DIGEST
+# ============================================================
 async def auto_post_2hr_digest(bot: Bot):
-    """Posts a 2-hour roll-up digest of alerts and events to prevent spam"""
+    """Posts a 2-hour roll-up digest of all recent alerts."""
     global recent_news_digest
     if not recent_news_digest:
         return
-
     try:
         lines = [
-            "ðŸŒ <b>AYEWAKEN FUTURES â€” 2-HOUR GLOBAL DIGEST</b>",
-            "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
+            "🌍 <b>AYEWAKEN FUTURES — 2-HOUR GLOBAL DIGEST</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         ]
-
-        # Pick up to 10 top headlines randomly to show recent events
         display_news = random.sample(recent_news_digest, min(len(recent_news_digest), 10))
-
         for item in display_news:
             lines.append(item)
             lines.append("")
-
         lines.extend([
-            "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”",
-            "âœï¸ <i>AYEWAKEN FUTURES â€” All glory to God.</i>"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "✍️ <i>AYEWAKEN FUTURES — All glory to God.</i>"
         ])
-        
         topic_id = int(TOPIC_NEWS) if TOPIC_NEWS and TOPIC_NEWS != "0" else None
-        
         await bot.send_message(
-            chat_id=int(GROUP_ID), 
-            text="\n".join(lines), 
-            parse_mode=ParseMode.HTML, 
+            chat_id=int(GROUP_ID),
+            text="\n".join(lines),
+            parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
             message_thread_id=topic_id
         )
-        
-        # Clear the digest so the next 2 hours has fresh events
         recent_news_digest.clear()
-        
     except Exception as e:
         logger.error(f"2Hr Digest error: {e}")
 
 
+# ============================================================
+# AUTO-POST: MARKET PULSE
+# ============================================================
 async def auto_post_market_pulse(bot: Bot):
     """Market overview with Fear & Greed auto-posted to group."""
     try:
@@ -292,22 +330,26 @@ async def auto_post_market_pulse(bot: Bot):
         data = requests.get(url, timeout=10).json()
 
         display = [
-            ("bitcoin","BTC","ðŸŸ "), ("ethereum","ETH","ðŸ”·"), ("solana","SOL","ðŸŸ£"),
-            ("binancecoin","BNB","ðŸŸ¡"), ("terra-luna","LUNC","ðŸ”µ"), ("terrausd","USTC","ðŸŸ¢"),
+            ("bitcoin", "BTC", "🟠"),
+            ("ethereum", "ETH", "🔷"),
+            ("solana", "SOL", "🟣"),
+            ("binancecoin", "BNB", "🟡"),
+            ("terra-luna", "LUNC", "🔵"),
+            ("terrausd", "USTC", "🟢"),
         ]
 
         fg_text = ""
         try:
             fg = requests.get(FEAR_GREED_API, timeout=5).json()['data'][0]
             val = int(fg['value'])
-            fg_emoji = "ðŸ˜±" if val < 25 else "ðŸ˜°" if val < 50 else "ðŸ˜" if val < 75 else "ðŸ¤‘"
-            fg_text = f"{fg_emoji} <b>Fear & Greed:</b> {val}/100 ({fg['value_classification']})\n"
-        except:
+            fg_emoji = "😱" if val < 25 else "😰" if val < 50 else "😊" if val < 75 else "🤑"
+            fg_text = f"{fg_emoji} <b>Fear &amp; Greed:</b> {val}/100 ({fg['value_classification']})\n"
+        except Exception:
             pass
 
         lines = [
-            "ðŸ“Š <b>MARKET PULSE â€” AUTO SIGNAL</b>",
-            "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”",
+            "📊 <b>MARKET PULSE — AUTO SIGNAL</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━",
             fg_text
         ]
 
@@ -315,24 +357,24 @@ async def auto_post_market_pulse(bot: Bot):
             if cg_id in data:
                 price = data[cg_id]["usd"]
                 change = data[cg_id].get("usd_24h_change", 0) or 0
-                arrow = "ðŸŸ¢â–²" if change > 0 else "ðŸ”´â–¼" if change < 0 else "âšªâ–¬"
+                arrow = "🟢▲" if change > 0 else "🔴▼" if change < 0 else "⚪▬"
                 p_str = f"${price:,.2f}" if price >= 1 else f"${price:,.6f}"
-                lines.append(f"{emoji} <b>{symbol}</b>  {p_str}  {arrow}{change:+.1f}%")
+                lines.append(f"{emoji} <b>{symbol}</b>  {p_str}  {arrow} {change:+.1f}%")
 
         exchanges = [
-            ("WEEX", f"https://www.weex.com/en/spot/BTC_USDT?vipCode={WEEX_REF}"),
-            ("BYDFi", f"https://partner.bydfi.com/register?vipCode={BYDFI_REF}&f=AyewakenFutures"),
+            ("Bybit", f"https://partner.bybit.com/b/{BYBIT_REF}"),
+            ("WEEX", f"https://www.weex.com/en/register?vipCode={WEEX_REF}"),
+            ("BYDFi", f"https://partner.bydfi.com/register?vipCode={BYDFI_REF}"),
             ("Bitunix", f"https://www.bitunix.com/register?vipCode={BITUNIX_REF}"),
-            ("BTCC", f"https://www.btcc.com/en-US/register?inviteCode={BTCC_REF}"),
-            ("KCEX", f"https://www.kcex.com/register?inviteCode={KCEX_REF}")
+            ("KCEX", f"https://www.kcex.com?inviteCode={KCEX_REF}")
         ]
         exchange_name, affiliate_link = random.choice(exchanges)
 
         lines.extend([
             "",
-            f"ðŸ“ˆ <a href='{affiliate_link}'>Trade on {exchange_name}</a>",
-            "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”",
-            "âœï¸ <i>AYEWAKEN FUTURES â€” All glory to God</i>",
+            f"📈 <a href='{affiliate_link}'>Trade on {exchange_name}</a>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "✍️ <i>AYEWAKEN FUTURES — All glory to God</i>",
             "#AyewakenFutures #MarketPulse #crypto"
         ])
 
@@ -351,24 +393,23 @@ async def auto_post_market_pulse(bot: Bot):
 # ============================================================
 if __name__ == '__main__':
     if not BOT_TOKEN:
-        print("ERROR: BOT_TOKEN not set.")
+        print("ERROR: BOT_TOKEN not set. Please set the BOT_TOKEN environment variable.")
         exit(1)
 
-    # Health server
+    # Start health server
     threading.Thread(target=run_health_server, daemon=True).start()
-    print("Health server on port 10000")
+    print("Health server running on port 10000")
 
-    # Auto-posting
+    # Start auto-posting thread
     if GROUP_ID:
         threading.Thread(target=auto_post_loop, args=(BOT_TOKEN,), daemon=True).start()
-        print(f"Auto-posting V3 armed for group {GROUP_ID}")
+        print(f"Auto-posting V16 armed for group {GROUP_ID}")
     else:
-        print("No GROUP_ID â€” auto-posting disabled.")
+        print("No GROUP_ID set — auto-posting disabled.")
 
-    # Build app
+    # Build Telegram app
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # All command handlers
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("price", price_command))
     app.add_handler(CommandHandler("token", token_command))
@@ -386,9 +427,7 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("lunc", lunc_command))
     app.add_handler(CommandHandler("ustc", ustc_command))
 
-    # Inline buttons
     app.add_handler(CallbackQueryHandler(button_callback))
 
-    print("âœï¸ AYEWAKEN FUTURES Bot V3 â€” All glory to God! LIVE.")
+    print("✅ AYEWAKEN FUTURES Bot V16 — All glory to God! LIVE.")
     app.run_polling()
-
