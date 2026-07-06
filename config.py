@@ -96,13 +96,12 @@ NEWS_FEEDS = {
 
 # Category display config with emojis for rich visual posts
 CATEGORY_CONFIG = {
-    "crypto":   {"emoji": "ðŸ“°", "label": "CRYPTO INTEL",           "color": "ðŸŸ ", "hashtag": "#crypto #bitcoin"},
-    "finance":  {"emoji": "ðŸ’¹", "label": "FINANCIAL MARKETS",      "color": "ðŸ’µ", "hashtag": "#finance #markets"},
-    "world":    {"emoji": "ðŸŒ", "label": "WORLD NEWS",             "color": "ðŸ”µ", "hashtag": "#world #geopolitics"},
-    "survival": {"emoji": "ðŸ›¡ï¸", "label": "SURVIVAL & DISASTER",    "color": "ðŸ”´", "hashtag": "#survival #prepping"},
-    "conflict": {"emoji": "âš”ï¸", "label": "WAR & CONFLICT",         "color": "ðŸŸ¤", "hashtag": "#conflict #defense"},
-    "science":  {"emoji": "ðŸ”¬", "label": "SCIENCE & SPACE",        "color": "ðŸŸ£", "hashtag": "#nasa #space"},
-    "energy":   {"emoji": "â›½", "label": "ENERGY & RESOURCES",     "color": "ðŸŸ¡", "hashtag": "#energy #oil"},
-    "health":   {"emoji": "ðŸ¥", "label": "HEALTH & PANDEMIC",      "color": "ðŸŸ¢", "hashtag": "#health #pandemic"},
+    "crypto":   {"emoji": "📰", "label": "CRYPTO INTEL",          "color": "🟠", "hashtag": "#crypto #bitcoin"},
+    "finance":  {"emoji": "📹", "label": "FINANCIAL MARKETS",     "color": "💵", "hashtag": "#finance #markets"},
+    "world":    {"emoji": "🌍", "label": "WORLD NEWS",            "color": "🔵", "hashtag": "#world #geopolitics"},
+    "survival": {"emoji": "🛡️", "label": "SURVIVAL & DISASTER",  "color": "🔴", "hashtag": "#survival #prepping"},
+    "conflict": {"emoji": "⚔️", "label": "WAR & CONFLICT",       "color": "🟤", "hashtag": "#conflict #defense"},
+    "science":  {"emoji": "🔬", "label": "SCIENCE & SPACE",       "color": "🟣", "hashtag": "#nasa #space"},
+    "energy":   {"emoji": "⛽", "label": "ENERGY & RESOURCES",   "color": "🟡", "hashtag": "#energy #oil"},
+    "health":   {"emoji": "🏥", "label": "HEALTH & PANDEMIC",    "color": "🟢", "hashtag": "#health #pandemic"},
 }
-
