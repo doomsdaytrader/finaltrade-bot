@@ -267,12 +267,22 @@ def build_trade_setup(symbol, price, change_24h, rsi, volume, avg_volume_est):
 
 
 def fmt(price):
-    if price >= 1:
+    """Format any crypto price as a clean, human-readable string."""
+    if price == 0:
+        return "$0.00"
+    elif price >= 1000:
+        return f"${price:,.2f}"
+    elif price >= 1:
         return f"${price:,.3f}"
+    elif price >= 0.01:
+        return f"${price:,.4f}"
+    elif price >= 0.001:
+        return f"${price:,.5f}"
     elif price >= 0.0001:
         return f"${price:,.6f}"
     else:
-        return f"${price:.2e}"
+        # Micro-cap: show 8 decimal places, NEVER scientific notation
+        return f"${price:.8f}"
 
 
 # ============================================================
@@ -343,14 +353,35 @@ async def auto_post_hottest_tokens(bot: Bot, force_symbol=None, exclude_symbols=
 
         target_coin = None
 
-        # Force a specific symbol
+        # Force a specific symbol — fetch directly if not in cache
         if force_symbol:
             for c in valid_coins:
                 if c["symbol"].lower() == force_symbol.lower():
                     target_coin = c
                     break
+
             if not target_coin:
-                logger.warning(f"[TOKEN SCANNER] Forced symbol '{force_symbol}' not in cache.")
+                # Directly fetch the forced coin from CoinGecko
+                cg_id_map = {
+                    "lunc": "terra-luna", "ustc": "terrausd",
+                    "btc": "bitcoin", "eth": "ethereum",
+                    "sol": "solana", "bnb": "binancecoin"
+                }
+                cg_id = cg_id_map.get(force_symbol.lower(), force_symbol.lower())
+                try:
+                    direct_url = (
+                        f"https://api.coingecko.com/api/v3/coins/markets"
+                        f"?vs_currency=usd&ids={cg_id}"
+                        f"&sparkline=true&price_change_percentage=1h,24h"
+                    )
+                    dr = requests.get(direct_url, timeout=10)
+                    if dr.status_code == 200 and dr.json():
+                        target_coin = dr.json()[0]
+                        logger.info(f"[TOKEN SCANNER] Direct fetch for {force_symbol.upper()} succeeded.")
+                    else:
+                        logger.warning(f"[TOKEN SCANNER] Direct fetch for {force_symbol.upper()} failed ({dr.status_code}).")
+                except Exception as e:
+                    logger.error(f"[TOKEN SCANNER] Direct fetch error for {force_symbol}: {e}")
 
         # General selection — exclude specified + recently posted
         if not target_coin:
@@ -438,13 +469,9 @@ async def auto_post_hottest_tokens(bot: Bot, force_symbol=None, exclude_symbols=
 
         exchange_name, affiliate_link = get_exchange_for_coin(symbol)
 
-        buttons = [[InlineKeyboardButton(f"📈 Trade {symbol} on {exchange_name}", url=affiliate_link)]]
-        if symbol in ["LUNC", "USTC"]:
-            buttons.append([InlineKeyboardButton(
-                "🔥 LUNC TO $0.37 — MINI APP",
-                url="https://finaltrade-dashboard-91me6lozz-irayecrypto-1565s-projects.vercel.app/lunc/index.html"
-            )])
-        keyboard = InlineKeyboardMarkup(buttons)
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton(f"📈 Trade {symbol} on {exchange_name}", url=affiliate_link)]
+        ])
 
         topic_id = int(TOPIC_SIGNALS) if TOPIC_SIGNALS and TOPIC_SIGNALS != "0" else None
 
