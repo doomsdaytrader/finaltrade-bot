@@ -90,19 +90,28 @@ def is_urgent(title: str) -> bool:
 
 # ============================================================
 # AUTO-POST ENGINE V16 — Smart Pacing + Pinpoint Accuracy
-# ============================================================
-def auto_post_loop(bot_token: str):
+# ===========================================================def auto_post_loop(bot_token: str):
     bot = Bot(token=bot_token)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     time.sleep(5)
-    logger.info("=== AUTO-POST ENGINE V16 STARTED === SMART PACING + PINPOINT ACCURACY ===")
+    logger.info("=== AUTO-POST ENGINE V16 STARTED === DUAL-PACING MODE ===")
 
     hack_counter = 0
+    last_crypto_time = 0
+    last_news_time = 0
     global last_digest_time
+    
+    categories = list(NEWS_FEEDS.keys())
+    cat_index = 0
+    
+    # Start immediately on first run
+    next_news_wait = 0
 
     while True:
         try:
+            current_time = time.time()
+
             # Keep Render free tier alive
             try:
                 requests.get("https://finaltrade-bot.onrender.com/", timeout=10)
@@ -111,58 +120,71 @@ def auto_post_loop(bot_token: str):
                 pass
 
             if GROUP_ID:
-                # === PHASE 1: 3x Crypto Signal Burst ===
-                logger.info(">>> PHASE 1: Firing 3x crypto signals...")
-                for i in range(3):
+                # === 1. CRYPTO ALERTS (Every 7 minutes) ===
+                if current_time - last_crypto_time >= 7 * 60:
+                    logger.info(">>> Firing 7-min crypto signal...")
                     try:
                         loop.run_until_complete(auto_post_hottest_tokens(bot))
-                        logger.info(f">>> CRYPTO SIGNAL {i+1}/3 SENT")
+                        logger.info(">>> CRYPTO SIGNAL SENT")
                     except Exception as sig_err:
-                        logger.error(f">>> CRYPTO SIGNAL {i+1}/3 FAILED: {sig_err}")
-                    time.sleep(10)
+                        logger.error(f">>> CRYPTO SIGNAL FAILED: {sig_err}")
+                    
+                    last_crypto_time = time.time()
+                    current_time = time.time()
 
-                # === PHASE 2: News Digest + Signal Interleave ===
-                logger.info(">>> PHASE 2: Smart news digest + signal interleave...")
-                cat_count = 0
-                for category, feeds in NEWS_FEEDS.items():
-                    loop.run_until_complete(auto_post_category(bot, category, feeds))
-                    cat_count += 1
-
-                    # Crypto signal after each news category
+                # === 2. NEWS & UPDATES (Every 10-20 minutes) ===
+                if current_time - last_news_time >= next_news_wait:
+                    category = categories[cat_index]
+                    feeds = NEWS_FEEDS[category]
+                    
+                    logger.info(f">>> Posting news category: {category}")
                     try:
-                        loop.run_until_complete(auto_post_hottest_tokens(bot))
-                        logger.info(f">>> CRYPTO SIGNAL after [{category}] SENT")
-                    except Exception as sig_err:
-                        logger.error(f">>> CRYPTO SIGNAL after [{category}] FAILED: {sig_err}")
+                        loop.run_until_complete(auto_post_category(bot, category, feeds))
+                    except Exception as cat_err:
+                        logger.error(f"Error posting category {category}: {cat_err}")
+                    
+                    cat_index += 1
+                    
+                    # Market Pulse every 3 categories
+                    if cat_index % 3 == 0:
+                        try:
+                            loop.run_until_complete(auto_post_market_pulse(bot))
+                            logger.info(">>> MARKET PULSE SENT")
+                        except Exception as mp_err:
+                            logger.error(f"Error posting market pulse: {mp_err}")
+                            
+                    # Cycle complete: Handle Survival Hack and reset
+                    if cat_index >= len(categories):
+                        cat_index = 0
+                        hack_counter += 1
+                        if hack_counter >= 2:
+                            try:
+                                loop.run_until_complete(auto_post_survival_hack(bot))
+                                logger.info(">>> SURVIVAL HACK SENT")
+                            except Exception as hack_err:
+                                logger.error(f"Error posting survival hack: {hack_err}")
+                            hack_counter = 0
+                            
+                    last_news_time = time.time()
+                    # Next wait: 10 to 20 minutes
+                    wait_mins = random.randint(10, 20)
+                    next_news_wait = wait_mins * 60
+                    logger.info(f">>> Pacing: waiting {wait_mins} min before next news post...")
+                    current_time = time.time()
 
-                    # Market Pulse every 4 categories
-                    if cat_count % 4 == 0:
-                        loop.run_until_complete(auto_post_market_pulse(bot))
-                        logger.info(">>> MARKET PULSE SENT")
-                        time.sleep(10)
-
-                    # Smart pacing: 7–21 min random wait between news categories
-                    wait_mins = random.randint(7, 21)
-                    logger.info(f">>> Pacing: waiting {wait_mins} min before next category...")
-                    time.sleep(wait_mins * 60)
-
-                # === PHASE 3: Survival Hack + 2hr Digest ===
-                hack_counter += 1
-                if hack_counter >= 2:
-                    loop.run_until_complete(auto_post_survival_hack(bot))
-                    hack_counter = 0
-
-                current_time = time.time()
+                # === 3. 2-HOUR DIGEST ===
                 if current_time - last_digest_time >= 7200:
-                    loop.run_until_complete(auto_post_2hr_digest(bot))
-                    last_digest_time = current_time
-
-                logger.info("=== FULL CYCLE COMPLETE ===")
+                    try:
+                        loop.run_until_complete(auto_post_2hr_digest(bot))
+                    except Exception as digest_err:
+                        logger.error(f"Error posting digest: {digest_err}")
+                    last_digest_time = time.time()
 
         except Exception as e:
             logger.error(f"Auto-post cycle error: {e}")
 
-        time.sleep(30)
+        # Tick frequency: check timers every 30 seconds
+        time.sleep(30)0)
 
 
 # ============================================================
