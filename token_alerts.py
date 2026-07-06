@@ -4,6 +4,8 @@ import requests
 import random
 import time
 import os
+import json
+import urllib.parse
 from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.constants import ParseMode
 from config import (
@@ -15,6 +17,56 @@ from config import (
 from telegram_commands import estimate_rsi
 
 logger = logging.getLogger(__name__)
+
+def generate_quickchart_url(symbol, prices, change_24h):
+    """Generate a premium dark-themed 24h trend chart using QuickChart API."""
+    if not prices or len(prices) < 2:
+        return None
+    try:
+        color = "rgb(0, 220, 120)" if change_24h >= 0 else "rgb(255, 70, 70)"
+        fill_color = "rgba(0, 220, 120, 0.15)" if change_24h >= 0 else "rgba(255, 70, 70, 0.15)"
+        
+        # Build clean config for 24h trend
+        chart_config = {
+            "type": "line",
+            "data": {
+                "labels": ["" for _ in prices],
+                "datasets": [{
+                    "borderColor": color,
+                    "borderWidth": 3,
+                    "fill": True,
+                    "backgroundColor": fill_color,
+                    "data": prices,
+                    "pointRadius": 0,
+                    "lineTension": 0.4
+                }]
+            },
+            "options": {
+                "legend": { "display": False },
+                "scales": {
+                    "xAxes": [{ "display": False }],
+                    "yAxes": [{
+                        "gridLines": { "color": "rgba(255, 255, 255, 0.08)" },
+                        "ticks": {
+                            "fontColor": "#a0a0a0",
+                            "fontSize": 10
+                        }
+                    }]
+                },
+                "title": {
+                    "display": True,
+                    "text": f"{symbol}/USDT 24h Trend ({change_24h:+.2f}%)",
+                    "fontColor": "#ffffff",
+                    "fontSize": 14
+                }
+            }
+        }
+        payload = json.dumps(chart_config)
+        encoded = urllib.parse.quote(payload)
+        return f"https://quickchart.io/chart?bkg=rgb(20,20,25)&c={encoded}"
+    except Exception as e:
+        logger.error(f"[QUICKCHART] Error generating chart URL: {e}")
+        return None
 
 # ============================================================
 # PERSISTENT RECENTLY-ALERTED MEMORY
@@ -473,14 +525,25 @@ async def auto_post_hottest_tokens(bot: Bot, force_symbol=None, exclude_symbols=
             [InlineKeyboardButton(f"📈 Trade {symbol} on {exchange_name}", url=affiliate_link)]
         ])
 
+        chart_url = generate_quickchart_url(symbol, sparkline[-24:], change_24h)
+        photo_to_send = chart_url if chart_url else image_url
+
         topic_id = int(TOPIC_SIGNALS) if TOPIC_SIGNALS and TOPIC_SIGNALS != "0" else None
 
-        if image_url:
-            await bot.send_photo(
-                chat_id=int(GROUP_ID), photo=image_url,
-                caption=caption, parse_mode=ParseMode.HTML,
-                reply_markup=keyboard, message_thread_id=topic_id
-            )
+        if photo_to_send:
+            try:
+                await bot.send_photo(
+                    chat_id=int(GROUP_ID), photo=photo_to_send,
+                    caption=caption, parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard, message_thread_id=topic_id
+                )
+            except Exception as e:
+                logger.error(f"[TOKEN SIGNAL] Photo send failed, trying text fallback: {e}")
+                await bot.send_message(
+                    chat_id=int(GROUP_ID), text=caption,
+                    parse_mode=ParseMode.HTML, reply_markup=keyboard,
+                    message_thread_id=topic_id
+                )
         else:
             await bot.send_message(
                 chat_id=int(GROUP_ID), text=caption,
