@@ -129,8 +129,8 @@ def auto_post_loop(bot_token: str):
 
     # Stagger: priority fires first, then wait before general and news
     next_priority_wait = 0
-    next_general_wait  = 30 * 60   # first general fires 30 min after start
-    next_news_wait     = 5  * 60   # first news fires 5 min after start
+    next_general_wait  = 60 * 60   # first general fires 60 min after start
+    next_news_wait     = 10 * 60   # first news fires 10 min after start
 
     # --- Spike Detection Variables ---
     price_history = { "lunc": [], "btc": [] }
@@ -223,8 +223,8 @@ def auto_post_loop(bot_token: str):
 
                     last_priority_time = time.time()
                     current_time = time.time()
-                    next_priority_wait = 11 * 60   # always exactly 11 min
-                    logger.info(">>> [PRIORITY] Next in 11 min")
+                    next_priority_wait = 22 * 60   # always exactly 22 min
+                    logger.info(">>> [PRIORITY] Next in 22 min")
 
                 # === ENGINE 2: GENERAL CRYPTO — all others every 30 min ===
                 if current_time - last_general_time >= next_general_wait:
@@ -239,8 +239,8 @@ def auto_post_loop(bot_token: str):
 
                     last_general_time = time.time()
                     current_time = time.time()
-                    next_general_wait = 30 * 60
-                    logger.info(">>> [GENERAL] Next in 30 min")
+                    next_general_wait = 60 * 60
+                    logger.info(">>> [GENERAL] Next in 60 min")
 
                 # === ENGINE 3: NEWS — one category every 20-30 min ===
                 if current_time - last_news_time >= next_news_wait:
@@ -276,7 +276,7 @@ def auto_post_loop(bot_token: str):
 
                     last_news_time = time.time()
                     current_time   = time.time()
-                    wait_mins      = random.randint(20, 30)
+                    wait_mins      = random.randint(40, 60)
                     next_news_wait = wait_mins * 60
                     logger.info(f">>> [NEWS] Next in {wait_mins} min")
 
